@@ -1,14 +1,12 @@
 /* ===========================================
-   WATCH VIDEO INFO - YouTube Modern Style
-   Aesthetic: Clean, minimal, pill-shaped buttons
+   WATCH VIDEO INFO - Clean YouTube Style
    =========================================== */
 
 .watchVideoInfo {
   display: flex;
   flex-direction: column;
-  padding: 16px 0;
-  gap: 16px;
-  background: transparent;
+  padding: 12px 0;
+  gap: 12px;
 }
 
 /* ===========================================
@@ -18,35 +16,30 @@
 .videoTitleSection {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .videoTitle {
-  display: block;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.4;
   margin: 0;
-  overflow-wrap: break-word;
   color: var(--primary-text-color);
-  letter-spacing: -0.02em;
 }
 
 .unlistedBadge {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   display: inline-block;
-  padding: 4px 8px;
-  white-space: nowrap;
+  padding: 2px 6px;
   font-size: 12px;
-  font-weight: 500;
   margin-inline-start: 8px;
   vertical-align: middle;
   color: var(--tertiary-text-color);
 }
 
 /* ===========================================
-   CHANNEL + META ROW (Mobile YouTube Style)
+   MOBILE CHANNEL ROW (hidden on desktop)
    =========================================== */
 
 .channelMetaRow {
@@ -57,7 +50,6 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  flex-shrink: 0;
   object-fit: cover;
 }
 
@@ -68,8 +60,6 @@
   gap: 6px;
   font-size: 14px;
   color: var(--tertiary-text-color);
-  line-height: 1.4;
-  min-width: 0;
   flex: 1;
 }
 
@@ -77,11 +67,6 @@
   color: var(--primary-text-color);
   text-decoration: none;
   font-weight: 500;
-  font-size: 14px;
-}
-
-.channelNameInline:hover {
-  color: var(--primary-text-color);
 }
 
 .metaText {
@@ -93,7 +78,6 @@
 }
 
 .metaDot {
-  font-weight: bold;
   opacity: 0.6;
 }
 
@@ -104,22 +88,20 @@
   font-size: 13px;
   padding: 0;
   cursor: pointer;
-  font-weight: 500;
-}
-
-.showMoreBtn:hover {
-  color: var(--primary-text-color);
 }
 
 /* ===========================================
-   ACTION BUTTONS ROW - YouTube Pill Style
+   MOBILE ACTION BUTTONS ROW (hidden on desktop)
    =========================================== */
 
 .actionButtonsRow {
   display: none;
 }
 
-/* Desktop-only elements */
+/* ===========================================
+   DESKTOP LAYOUT
+   =========================================== */
+
 .desktopOnly {
   display: flex;
 }
@@ -130,12 +112,7 @@
   gap: 4px;
   font-size: 14px;
   color: var(--tertiary-text-color);
-  flex-wrap: wrap;
 }
-
-/* ===========================================
-   CHANNEL AND ACTIONS ROW (Desktop)
-   =========================================== */
 
 .channelActionsRow {
   display: flex;
@@ -143,13 +120,12 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  padding: 16px 0;
+  padding: 12px 0;
   border-top: 1px solid var(--side-nav-hover-color);
   border-bottom: 1px solid var(--side-nav-hover-color);
-  margin-top: 8px;
 }
 
-/* Channel Info Section */
+/* Channel Info */
 .channelInfoSection {
   display: flex;
   align-items: center;
@@ -164,77 +140,66 @@
 
 .channelThumbnail {
   border-radius: 50%;
-  cursor: pointer;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   object-fit: cover;
-  transition: opacity 0.2s ease;
-}
-
-.channelThumbnail:hover {
-  opacity: 0.85;
 }
 
 .channelDetails {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
 .channelName {
   color: var(--primary-text-color);
-  cursor: pointer;
-  display: block;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
-}
-
-.channelName:hover {
-  color: var(--primary-text-color);
 }
 
 /* ===========================================
-   ACTION BUTTONS SECTION - YouTube Pill Style
+   ACTION BUTTONS - Horizontal pill style
    =========================================== */
 
 .actionButtonsSection {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-/* Like/Dislike Pill */
+/* Like/Dislike combined pill */
 .likeDislikePill {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   background-color: var(--side-nav-hover-color);
-  border-radius: 24px;
-  overflow: hidden;
+  border-radius: 18px;
   height: 36px;
+  overflow: hidden;
 }
 
 .likeButton,
 .dislikeButton {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 16px;
+  padding: 0 14px;
   height: 100%;
   background: transparent;
   border: none;
   color: var(--primary-text-color);
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  white-space: nowrap;
 }
 
 .likeButton:hover,
@@ -248,95 +213,51 @@
 
 .likeIcon,
 .dislikeIcon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .dislikeIcon {
   transform: scaleY(-1);
 }
 
-/* ===========================================
-   ACTION BUTTON - YouTube Pill Style
-   Unified design for all action buttons
-   =========================================== */
-
+/* Action button wrapper - makes FtIconButton pill-shaped */
 .actionButton {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 16px;
-  background-color: var(--side-nav-hover-color);
-  border: none;
-  border-radius: 24px;
-  color: var(--primary-text-color);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  white-space: nowrap;
-  gap: 8px;
 }
 
-.actionButton:hover {
-  background-color: var(--side-nav-active-color);
-}
-
-/* Override FtIconButton styles within actionButton */
+/* Override FtIconButton's internal styles */
 .actionButton :deep(.ftIconButton) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-flex;
+  flex-direction: row;
 }
 
 .actionButton :deep(.iconButton) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: var(--side-nav-hover-color) !important;
-  color: var(--primary-text-color) !important;
-  border-radius: 24px !important;
-  padding: 0 16px !important;
+  border-radius: 18px !important;
+  padding: 8px 14px !important;
   height: 36px !important;
+  min-width: 36px;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Subscribe button compact style */
+.subscribeButtonCompact {
+  flex-shrink: 0;
+}
+
+.subscribeButtonCompact :deep(.subscribeButton) {
+  border-radius: 18px !important;
+  height: 36px !important;
+  padding: 0 16px !important;
   font-size: 14px !important;
-  box-shadow: none !important;
-  transition: background-color 0.15s ease !important;
 }
 
-.actionButton :deep(.iconButton:hover) {
-  background-color: var(--side-nav-active-color) !important;
-}
-
-.actionButton :deep(.iconButton.secondary) {
-  background-color: var(--side-nav-hover-color) !important;
-  color: var(--primary-text-color) !important;
-}
-
-.actionButton :deep(.iconButton.secondary:hover) {
-  background-color: var(--side-nav-active-color) !important;
-}
-
-.actionButton :deep(.icon) {
-  font-size: 16px;
-}
-
-/* Bookmarked state - subtle highlight */
-.actionButton.bookmarked :deep(.iconButton) {
-  background-color: rgba(234, 67, 53, 0.15) !important;
-  color: #ea4335 !important;
-}
-
-.actionButton.bookmarked :deep(.iconButton:hover) {
-  background-color: rgba(234, 67, 53, 0.25) !important;
-}
-
-/* Music mode button accent */
-.actionButton.musicModeButton :deep(.iconButton) {
-  background-color: var(--side-nav-hover-color) !important;
-}
-
-/* Quick Bookmark Video Icon */
+/* Bookmarked state */
+.actionButton.bookmarked :deep(.iconButton),
 .quickBookmarkVideoIcon.bookmarked :deep(.iconButton) {
   background-color: rgba(234, 67, 53, 0.15) !important;
   color: #ea4335 !important;
@@ -348,6 +269,7 @@
 
 .moreOptionsRow {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
@@ -356,24 +278,7 @@
 
 .moreOptionsRow .actionButton :deep(.iconButton) {
   height: 32px !important;
-  padding: 0 12px !important;
-  font-size: 13px !important;
-}
-
-/* ===========================================
-   SUBSCRIBE BUTTON COMPACT
-   =========================================== */
-
-.subscribeButtonCompact {
-  flex-shrink: 0;
-}
-
-.subscribeButtonCompact :deep(.subscribeButton) {
-  border-radius: 24px !important;
-  height: 36px !important;
-  padding: 0 16px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
+  padding: 6px 12px !important;
 }
 
 /* ===========================================
@@ -381,12 +286,6 @@
    =========================================== */
 
 @media screen and (max-width: 900px) {
-  .watchVideoInfo {
-    padding: 12px 0;
-    gap: 12px;
-  }
-
-  /* Hide desktop elements */
   .desktopOnly {
     display: none !important;
   }
@@ -395,35 +294,31 @@
     display: none !important;
   }
 
-  /* Show mobile elements */
   .channelMetaRow {
     display: flex;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 12px;
     padding: 8px 0;
   }
 
   .actionButtonsRow {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 8px;
     padding: 8px 0;
-    flex-wrap: wrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    -ms-overflow-style: none;
   }
 
   .actionButtonsRow::-webkit-scrollbar {
     display: none;
   }
 
-  /* Title - Expandable */
   .videoTitle {
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.3;
+    font-size: 16px;
     cursor: pointer;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -436,45 +331,8 @@
     display: block;
   }
 
-  /* Mobile action buttons - consistent pill style */
-  .likeDislikePill {
-    height: 36px;
-    flex-shrink: 0;
-  }
-
-  .likeButton,
-  .dislikeButton {
-    padding: 0 12px;
-    font-size: 13px;
-  }
-
-  .actionButton :deep(.iconButton) {
-    height: 36px !important;
-    padding: 0 14px !important;
-    border-radius: 20px !important;
-    font-size: 13px !important;
-  }
-
-  .subscribeButtonCompact :deep(.subscribeButton) {
-    height: 36px !important;
-    padding: 0 14px !important;
-    font-size: 13px !important;
-  }
-
-  /* More options hidden on mobile */
   .moreOptionsRow {
     display: none;
-  }
-}
-
-/* ===========================================
-   TABLET STYLES (600px - 900px)
-   =========================================== */
-
-@media screen and (max-width: 900px) and (min-width: 601px) {
-  .actionButtonsRow {
-    flex-wrap: nowrap;
-    overflow-x: auto;
   }
 }
 
@@ -483,14 +341,8 @@
    =========================================== */
 
 @media screen and (max-width: 600px) {
-  .watchVideoInfo {
-    padding: 10px 0;
-    gap: 10px;
-  }
-
   .videoTitle {
-    font-size: 16px;
-    line-height: 1.25;
+    font-size: 15px;
   }
 
   .channelThumbnailSmall {
@@ -498,108 +350,30 @@
     height: 32px;
   }
 
-  .channelMetaInline {
-    font-size: 13px;
-  }
-
-  .channelNameInline {
-    font-size: 13px;
-  }
-
-  /* Reorganize action buttons for small screens */
-  .actionButtonsRow {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  /* Subscribe and like/dislike on first row */
-  .actionButtonsRow .subscribeButtonCompact {
-    order: 1;
-    flex: 0 0 auto;
-  }
-
-  .actionButtonsRow .likeDislikePill {
-    order: 2;
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
-
-  /* Force line break after like/dislike */
-  .actionButtonsRow::before {
-    content: "";
-    width: 100%;
-    order: 3;
-  }
-
-  /* Other buttons on second row */
-  .actionButtonsRow .actionButton {
-    order: 4;
-    flex: 0 0 auto;
-  }
-
-  /* Smaller buttons */
-  .likeButton,
-  .dislikeButton {
-    padding: 0 10px;
-    font-size: 12px;
-  }
-
   .likeDislikePill {
     height: 32px;
   }
 
+  .likeButton,
+  .dislikeButton {
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
   .actionButton :deep(.iconButton) {
     height: 32px !important;
-    padding: 0 12px !important;
-    font-size: 12px !important;
+    padding: 6px 12px !important;
   }
 
   .subscribeButtonCompact :deep(.subscribeButton) {
     height: 32px !important;
     padding: 0 12px !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
   }
 }
 
 /* ===========================================
-   EXTRA SMALL MOBILE (< 400px)
-   =========================================== */
-
-@media screen and (max-width: 400px) {
-  .videoTitle {
-    font-size: 15px;
-  }
-
-  .channelThumbnailSmall {
-    width: 28px;
-    height: 28px;
-  }
-
-  .channelMetaInline {
-    font-size: 12px;
-  }
-
-  /* Icon-only buttons on very small screens */
-  .actionButton :deep(.iconButton) {
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    border-radius: 50% !important;
-  }
-
-  .likeButton span,
-  .dislikeButton span {
-    display: none;
-  }
-
-  .likeButton,
-  .dislikeButton {
-    padding: 0 8px;
-  }
-}
-
-/* ===========================================
-   LEGACY COMPATIBILITY STYLES
+   LEGACY COMPATIBILITY
    =========================================== */
 
 .profileRow {
@@ -628,7 +402,6 @@
   display: flex;
   flex-direction: column;
   margin-inline-start: auto;
-  margin-block-start: 4px;
   max-inline-size: 210px;
   text-align: end;
 }
@@ -640,7 +413,6 @@
 }
 
 .likeCount {
-  margin-inline-end: 0;
   display: flex;
   gap: 3px;
 }
