@@ -844,7 +844,7 @@ export default {
   .yt-video-player :deep(video.player) {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important;
+    object-fit: cover !important;
   }
 
   .yt-video-info {
