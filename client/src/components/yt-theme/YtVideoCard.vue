@@ -27,13 +27,15 @@
       <!-- Info -->
       <div class="flex mt-3">
         <!-- Channel Avatar -->
-        <div class="flex-shrink-0 h-9 w-9 rounded-full overflow-hidden bg-gray-300 dark:bg-[#303030]">
+        <div class="flex-shrink-0 h-9 w-9 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
           <img
             v-if="channelThumbnail"
             :src="channelThumbnail"
             :alt="video.author"
             class="w-full h-full object-cover"
+            @error="handleImageError"
           />
+          <span v-else class="text-white text-sm font-semibold">{{ channelInitial }}</span>
         </div>
 
         <!-- Text Info -->
@@ -78,12 +80,38 @@ export default {
     },
     channelThumbnail() {
       if (this.video.authorThumbnails && this.video.authorThumbnails.length > 0) {
-        return this.video.authorThumbnails[0].url
+        let url = this.video.authorThumbnails[0].url
+        // Handle protocol-relative URLs
+        if (url.startsWith('//')) {
+          url = 'https:' + url
+        }
+        // Proxy yt3.ggpht.com/yt3.googleusercontent.com images through /ggpht/
+        if (url.includes('yt3.ggpht.com')) {
+          const path = url.replace(/https?:\/\/yt3\.ggpht\.com/, '')
+          return '/ggpht' + path
+        }
+        if (url.includes('yt3.googleusercontent.com')) {
+          const path = url.replace(/https?:\/\/yt3\.googleusercontent\.com/, '')
+          return '/ggpht' + path
+        }
+        // For other URLs, use imgproxy with base64url encoding
+        if (url.startsWith('http')) {
+          const encoded = btoa(url).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+          return '/imgproxy?url=' + encoded
+        }
+        return url
       }
       return ''
+    },
+    channelInitial() {
+      return this.video.author ? this.video.author.charAt(0).toUpperCase() : '?'
     }
   },
   methods: {
+    handleImageError(e) {
+      // Hide the broken image and show initial instead
+      e.target.style.display = 'none'
+    },
     formatDuration(seconds) {
       if (!seconds) return ''
       const h = Math.floor(seconds / 3600)
