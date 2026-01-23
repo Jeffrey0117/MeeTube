@@ -1,20 +1,20 @@
 <template>
-  <div class="fixed inset-0 bg-white dark:bg-[#0f0f0f] overflow-y-auto">
+  <div class="yt-watch-page">
     <!-- Header -->
     <YtHeader @toggle-sidebar="toggleSidebar" />
 
     <!-- Main Content -->
-    <div class="flex justify-center pt-14 min-h-[calc(100vh-56px)]">
-      <div class="w-full max-w-[1800px] flex flex-col lg:flex-row px-4 lg:px-6">
+    <div class="yt-watch-content">
+      <div class="yt-watch-container">
         <!-- Video Area -->
-        <div class="flex flex-col lg:w-[calc(100%-400px)] xl:w-[calc(100%-420px)]">
+        <div class="yt-video-area">
           <!-- Loading -->
-          <div v-if="isLoading" class="aspect-video bg-black flex items-center justify-center rounded-xl">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          <div v-if="isLoading" class="yt-video-loading">
+            <div class="yt-spinner"></div>
           </div>
 
           <!-- Video Player -->
-          <div v-else class="aspect-video bg-black rounded-xl overflow-hidden">
+          <div v-else class="yt-video-player">
             <ft-shaka-video-player
               v-if="!errorMessage && manifestSrc"
               ref="player"
@@ -38,62 +38,35 @@
               @timeupdate="updateCurrentChapter"
               @ended="handleVideoEnded"
             />
-            <div v-else-if="errorMessage" class="w-full h-full flex items-center justify-center text-white">
-              <div class="text-center">
-                <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="text-4xl mb-2" />
-                <p>{{ errorMessage }}</p>
-              </div>
+            <div v-else-if="errorMessage" class="yt-video-error">
+              <font-awesome-icon :icon="['fas', 'exclamation-circle']" class="yt-error-icon" />
+              <p>{{ errorMessage }}</p>
             </div>
-            <div v-else class="w-full h-full flex items-center justify-center text-white">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            <div v-else class="yt-video-loading">
+              <div class="yt-spinner"></div>
             </div>
           </div>
 
           <!-- Video Info -->
-          <div class="mt-3">
-            <!-- Skeleton for title -->
-            <template v-if="isLoading">
-              <div class="animate-pulse">
-                <div class="h-6 bg-gray-200 dark:bg-[#272727] rounded w-3/4 mb-2"></div>
-                <div class="h-6 bg-gray-200 dark:bg-[#272727] rounded w-1/2"></div>
-              </div>
-            </template>
-            <h1 v-else class="text-lg md:text-xl font-semibold text-black dark:text-white line-clamp-2">
-              {{ videoTitle }}
-            </h1>
+          <div class="yt-video-info">
+            <h1 v-if="!isLoading" class="yt-video-title">{{ videoTitle }}</h1>
 
             <!-- Channel & Actions -->
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between mt-3 gap-3">
+            <div class="yt-channel-actions">
               <!-- Channel Info -->
-              <div class="flex items-center">
-                <template v-if="isLoading">
-                  <div class="animate-pulse flex items-center">
-                    <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-[#272727]"></div>
-                    <div class="ml-3">
-                      <div class="h-4 bg-gray-200 dark:bg-[#272727] rounded w-24 mb-1"></div>
-                      <div class="h-3 bg-gray-200 dark:bg-[#272727] rounded w-16"></div>
-                    </div>
+              <div class="yt-channel-info">
+                <router-link v-if="!isLoading" :to="`/yt/channel/${channelId}`" class="yt-channel-link">
+                  <div class="yt-channel-avatar">
+                    <img v-if="channelThumbnail" :src="channelThumbnail" :alt="channelName" />
                   </div>
-                </template>
-                <template v-else>
-                  <router-link :to="`/yt/channel/${channelId}`" class="flex items-center">
-                    <div class="h-10 w-10 rounded-full overflow-hidden bg-gray-300 dark:bg-[#303030] flex-shrink-0">
-                      <img v-if="channelThumbnail" :src="channelThumbnail" :alt="channelName" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="ml-3">
-                      <span class="text-black dark:text-white font-medium flex items-center">
-                        {{ channelName }}
-                        <font-awesome-icon :icon="['fas', 'check-circle']" class="text-gray-500 text-xs ml-1" />
-                      </span>
-                      <span class="text-xs text-gray-600 dark:text-gray-400">{{ channelSubscriptionCountText }}</span>
-                    </div>
-                  </router-link>
-                </template>
+                  <div class="yt-channel-details">
+                    <span class="yt-channel-name">{{ channelName }}</span>
+                    <span class="yt-channel-subs">{{ channelSubscriptionCountText }}</span>
+                  </div>
+                </router-link>
                 <button
-                  class="ml-6 px-4 py-2 rounded-full text-sm font-medium hover:opacity-80"
-                  :class="isChannelSubscribed
-                    ? 'bg-gray-200 dark:bg-[#272727] text-black dark:text-white'
-                    : 'bg-black dark:bg-white text-white dark:text-black'"
+                  class="yt-subscribe-btn"
+                  :class="{ 'subscribed': isChannelSubscribed }"
                   @click="toggleSubscription"
                 >
                   {{ isChannelSubscribed ? '已訂閱' : '訂閱' }}
@@ -146,73 +119,37 @@
             </div>
 
             <!-- Description Box -->
-            <div class="mt-3 p-3 bg-gray-100 dark:bg-[#272727] rounded-xl">
-              <template v-if="isLoading">
-                <div class="animate-pulse">
-                  <div class="h-4 bg-gray-300 dark:bg-[#303030] rounded w-1/3 mb-2"></div>
-                  <div class="h-3 bg-gray-300 dark:bg-[#303030] rounded w-full mb-1"></div>
-                  <div class="h-3 bg-gray-300 dark:bg-[#303030] rounded w-2/3"></div>
-                </div>
-              </template>
-              <template v-else>
-                <div class="flex text-sm text-black dark:text-white font-medium">
-                  <span>{{ formatCount(videoViewCount) }} 次觀看</span>
-                  <span class="mx-2">•</span>
-                  <span>{{ videoPublishedText }}</span>
-                </div>
-                <p class="mt-2 text-sm text-black dark:text-white whitespace-pre-wrap line-clamp-3">
-                  {{ videoDescription }}
-                </p>
-              </template>
+            <div v-if="!isLoading" class="yt-description-box">
+              <div class="yt-video-stats">
+                <span>{{ formatCount(videoViewCount) }} 次觀看</span>
+                <span class="yt-dot">•</span>
+                <span>{{ videoPublishedText }}</span>
+              </div>
+              <p class="yt-description-text">{{ videoDescription }}</p>
             </div>
           </div>
         </div>
 
         <!-- Related Videos -->
-        <div class="lg:w-[400px] xl:w-[420px] lg:pl-6 mt-6 lg:mt-0 min-h-[calc(100vh-120px)] bg-white dark:bg-[#0f0f0f]">
-          <!-- Skeleton Loading -->
-          <template v-if="isLoading">
-            <div v-for="i in 12" :key="'skeleton-' + i" class="mb-3 flex animate-pulse">
-              <div class="w-40 min-w-[160px] aspect-video rounded-lg bg-gray-200 dark:bg-[#272727]"></div>
-              <div class="ml-2 flex flex-col flex-1">
-                <div class="h-4 bg-gray-200 dark:bg-[#272727] rounded w-full mb-2"></div>
-                <div class="h-3 bg-gray-200 dark:bg-[#272727] rounded w-3/4 mb-2"></div>
-                <div class="h-3 bg-gray-200 dark:bg-[#272727] rounded w-1/2"></div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Actual Videos -->
-          <template v-else>
-            <div v-for="video in relatedVideos" :key="video.videoId" class="mb-2">
-              <router-link :to="`/yt/watch/${video.videoId}`" class="flex">
-                <div class="relative w-40 min-w-[160px] aspect-video rounded-lg overflow-hidden bg-gray-200 dark:bg-[#272727]">
-                  <img
-                    :src="getVideoThumbnail(video)"
-                    :alt="video.title"
-                    class="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div v-if="video.lengthSeconds" class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
-                    {{ formatDuration(video.lengthSeconds) }}
-                  </div>
-                  <div v-if="video.liveNow" class="absolute bottom-1 right-1 bg-red-600 text-white text-xs px-1 rounded">
-                    直播中
-                  </div>
+        <div class="yt-related-videos">
+          <template v-if="!isLoading">
+            <div v-for="video in relatedVideos" :key="video.videoId" class="yt-related-item">
+              <router-link :to="`/yt/watch/${video.videoId}`" class="yt-related-link">
+                <div class="yt-related-thumbnail">
+                  <img :src="getVideoThumbnail(video)" :alt="video.title" loading="lazy" />
+                  <span v-if="video.lengthSeconds" class="yt-duration">{{ formatDuration(video.lengthSeconds) }}</span>
+                  <span v-if="video.liveNow" class="yt-live-badge">直播中</span>
                 </div>
-                <div class="ml-2 flex flex-col overflow-hidden">
-                  <span class="text-sm font-medium text-black dark:text-white line-clamp-2">{{ video.title }}</span>
-                  <span v-if="video.author" class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ video.author }}</span>
-                  <div class="text-xs text-gray-600 dark:text-gray-400">
-                    <span v-if="video.viewCount">{{ formatCount(video.viewCount) }} 次觀看</span>
-                    <span v-if="video.viewCount && video.publishedText" class="mx-1">•</span>
-                    <span v-if="video.publishedText">{{ formatPublishedText(video.publishedText) }}</span>
-                  </div>
+                <div class="yt-related-info">
+                  <span class="yt-related-title">{{ video.title }}</span>
+                  <span v-if="video.author" class="yt-related-author">{{ video.author }}</span>
+                  <span class="yt-related-meta">
+                    <template v-if="video.viewCount">{{ formatCount(video.viewCount) }} 次觀看</template>
+                    <template v-if="video.viewCount && video.publishedText"> • </template>
+                    <template v-if="video.publishedText">{{ formatPublishedText(video.publishedText) }}</template>
+                  </span>
                 </div>
               </router-link>
-            </div>
-            <div v-if="relatedVideos.length === 0" class="text-center text-gray-500 py-4">
-              沒有推薦影片
             </div>
           </template>
         </div>
@@ -491,13 +428,183 @@ export default {
 </script>
 
 <style scoped>
-/* YouTube-style Action Buttons */
+/* ==========================================
+   YtWatch Page - Complete CSS (No Tailwind)
+   ========================================== */
+
+/* Page Layout */
+.yt-watch-page {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg-color, #fff);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.yt-watch-content {
+  display: flex;
+  justify-content: center;
+  padding-top: 56px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.yt-watch-container {
+  width: 100%;
+  max-width: 1800px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Video Area */
+.yt-video-area {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.yt-video-player {
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.yt-video-loading {
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.yt-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid transparent;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.yt-video-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.yt-error-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+/* Video Info */
+.yt-video-info {
+  margin-top: 12px;
+}
+
+.yt-video-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary-text-color, #0f0f0f);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+/* Channel & Actions Row */
+.yt-channel-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.yt-channel-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.yt-channel-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  text-decoration: none;
+  gap: 12px;
+}
+
+.yt-channel-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--side-nav-hover-color, #e5e5e5);
+  flex-shrink: 0;
+}
+
+.yt-channel-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt-channel-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.yt-channel-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-text-color, #0f0f0f);
+}
+
+.yt-channel-subs {
+  font-size: 12px;
+  color: var(--tertiary-text-color, #606060);
+}
+
+.yt-subscribe-btn {
+  padding: 0 16px;
+  height: 36px;
+  border: none;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #0f0f0f;
+  color: #fff;
+  transition: opacity 0.15s;
+}
+
+.yt-subscribe-btn:hover {
+  opacity: 0.85;
+}
+
+.yt-subscribe-btn.subscribed {
+  background-color: var(--side-nav-hover-color, #e5e5e5);
+  color: var(--primary-text-color, #0f0f0f);
+}
+
+/* Action Buttons */
 .yt-action-buttons {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .yt-like-pill {
@@ -586,25 +693,144 @@ export default {
   background-color: #dc2626;
 }
 
-/* Mobile responsive - icon only on small screens */
+/* Description Box */
+.yt-description-box {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: var(--side-nav-hover-color, #f2f2f2);
+  border-radius: 12px;
+}
+
+.yt-video-stats {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-text-color, #0f0f0f);
+  margin-bottom: 8px;
+}
+
+.yt-dot {
+  margin: 0 8px;
+}
+
+.yt-description-text {
+  font-size: 14px;
+  color: var(--primary-text-color, #0f0f0f);
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  margin: 0;
+}
+
+/* Related Videos */
+.yt-related-videos {
+  margin-top: 16px;
+  padding-bottom: 24px;
+}
+
+.yt-related-item {
+  margin-bottom: 8px;
+}
+
+.yt-related-link {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.yt-related-thumbnail {
+  position: relative;
+  width: 160px;
+  min-width: 160px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--side-nav-hover-color, #e5e5e5);
+}
+
+.yt-related-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt-duration {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.yt-live-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.yt-related-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.yt-related-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-text-color, #0f0f0f);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.yt-related-author {
+  font-size: 12px;
+  color: var(--tertiary-text-color, #606060);
+  margin-top: 4px;
+}
+
+.yt-related-meta {
+  font-size: 12px;
+  color: var(--tertiary-text-color, #606060);
+}
+
+/* ==========================================
+   RESPONSIVE - Mobile (<640px)
+   ========================================== */
 @media screen and (max-width: 640px) {
+  .yt-watch-content {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .yt-video-title {
+    font-size: 16px;
+  }
+
+  .yt-channel-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .yt-action-buttons {
-    flex-wrap: nowrap;
+    width: 100%;
+    justify-content: flex-start;
     gap: 6px;
   }
 
-  .yt-like-pill,
-  .yt-action-btn,
-  .yt-music-btn {
-    height: 36px;
-  }
-
-  .yt-like-btn,
-  .yt-dislike-btn {
-    padding: 0 12px;
-  }
-
-  /* Hide text labels on mobile - icon only */
+  /* Icon only on mobile */
   .yt-btn-text {
     display: none;
   }
@@ -615,27 +841,40 @@ export default {
     width: 36px;
     justify-content: center;
   }
-}
-
-/* Tablet - show text but smaller */
-@media screen and (min-width: 641px) and (max-width: 900px) {
-  .yt-action-buttons {
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-
-  .yt-like-pill,
-  .yt-action-btn,
-  .yt-music-btn {
-    height: 32px;
-    font-size: 13px;
-  }
 
   .yt-like-btn,
-  .yt-dislike-btn,
-  .yt-action-btn,
-  .yt-music-btn {
-    padding: 0 12px;
+  .yt-dislike-btn {
+    padding: 0 10px;
+  }
+
+  .yt-related-thumbnail {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  .yt-related-title {
+    font-size: 13px;
+  }
+}
+
+/* ==========================================
+   RESPONSIVE - Desktop (>1024px)
+   ========================================== */
+@media screen and (min-width: 1024px) {
+  .yt-watch-container {
+    flex-direction: row;
+  }
+
+  .yt-video-area {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .yt-related-videos {
+    width: 400px;
+    min-width: 400px;
+    margin-top: 0;
+    margin-left: 24px;
   }
 }
 </style>
