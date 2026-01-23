@@ -388,4 +388,24 @@
   }
 }
 
+/* Mobile: Full width video player */
+@media screen and (max-width: 639px) {
+  .ftVideoPlayer {
+    width: 100vw !important;
+    height: 56.25vw !important;
+    max-width: 100vw !important;
+  }
+
+  .ftVideoPlayer.sixteenByNine {
+    aspect-ratio: unset !important;
+    width: 100vw !important;
+    height: 56.25vw !important;
+  }
+
+  .player {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
 /* stylelint-enable liberty/use-logical-spec */
