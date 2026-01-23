@@ -101,44 +101,45 @@
               </div>
 
               <!-- Action Buttons -->
-              <div class="flex items-center gap-2">
-                <div class="flex items-center bg-gray-100 dark:bg-[#272727] rounded-full">
-                  <button class="flex items-center px-4 py-2 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] rounded-l-full">
-                    <font-awesome-icon :icon="['fas', 'thumbs-up']" class="text-black dark:text-white" />
-                    <span class="ml-2 text-black dark:text-white text-sm">{{ formatCount(videoLikeCount) }}</span>
+              <div class="yt-action-buttons">
+                <!-- Like/Dislike Pill -->
+                <div class="yt-like-pill">
+                  <button class="yt-like-btn">
+                    <font-awesome-icon :icon="['fas', 'thumbs-up']" />
+                    <span>{{ formatCount(videoLikeCount) }}</span>
                   </button>
-                  <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
-                  <button class="flex items-center px-4 py-2 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] rounded-r-full">
-                    <font-awesome-icon :icon="['fas', 'thumbs-down']" class="text-black dark:text-white" />
+                  <div class="yt-pill-divider"></div>
+                  <button class="yt-dislike-btn">
+                    <font-awesome-icon :icon="['fas', 'thumbs-down']" />
                   </button>
                 </div>
-                <button class="flex items-center px-4 py-2 bg-gray-100 dark:bg-[#272727] rounded-full hover:bg-gray-200 dark:hover:bg-[#3a3a3a]">
-                  <font-awesome-icon :icon="['fas', 'share']" class="text-black dark:text-white" />
-                  <span class="ml-2 text-black dark:text-white text-sm">分享</span>
+
+                <!-- Share -->
+                <button class="yt-action-btn">
+                  <font-awesome-icon :icon="['fas', 'share']" />
+                  <span>分享</span>
                 </button>
-                <button class="flex items-center px-4 py-2 bg-gray-100 dark:bg-[#272727] rounded-full hover:bg-gray-200 dark:hover:bg-[#3a3a3a]">
-                  <font-awesome-icon :icon="['fas', 'download']" class="text-black dark:text-white" />
-                  <span class="ml-2 text-black dark:text-white text-sm">下載</span>
+
+                <!-- Download -->
+                <button class="yt-action-btn">
+                  <font-awesome-icon :icon="['fas', 'download']" />
+                  <span>下載</span>
                 </button>
+
+                <!-- Favorite -->
                 <button
-                  class="flex items-center px-4 py-2 rounded-full"
-                  :class="isFavorited ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-[#272727] hover:bg-gray-200 dark:hover:bg-[#3a3a3a]'"
+                  class="yt-action-btn"
+                  :class="{ 'yt-favorited': isFavorited }"
                   @click="toggleFavorite"
                 >
-                  <font-awesome-icon
-                    :icon="['fas', 'heart']"
-                    :class="isFavorited ? 'text-red-500' : 'text-black dark:text-white'"
-                  />
-                  <span class="ml-2 text-sm" :class="isFavorited ? 'text-red-500' : 'text-black dark:text-white'">
-                    {{ isFavorited ? '已收藏' : '收藏' }}
-                  </span>
+                  <font-awesome-icon :icon="['fas', 'heart']" />
+                  <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
                 </button>
-                <button
-                  class="flex items-center px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700"
-                  @click="playAsMusic"
-                >
+
+                <!-- Music Mode -->
+                <button class="yt-music-btn" @click="playAsMusic">
                   <font-awesome-icon :icon="['fas', 'music']" />
-                  <span class="ml-2 text-sm">音樂模式</span>
+                  <span>音樂模式</span>
                 </button>
               </div>
             </div>
@@ -487,3 +488,125 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* YouTube-style Action Buttons */
+.yt-action-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.yt-like-pill {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: var(--side-nav-hover-color, #f2f2f2);
+  border-radius: 18px;
+  height: 36px;
+  overflow: hidden;
+}
+
+.yt-like-btn,
+.yt-dislike-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--primary-text-color, #0f0f0f);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.yt-like-btn:hover,
+.yt-dislike-btn:hover {
+  background-color: var(--side-nav-active-color, #e5e5e5);
+}
+
+.yt-pill-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--tertiary-text-color, #ccc);
+  opacity: 0.3;
+}
+
+.yt-action-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 36px;
+  background-color: var(--side-nav-hover-color, #f2f2f2);
+  border: none;
+  border-radius: 18px;
+  color: var(--primary-text-color, #0f0f0f);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.yt-action-btn:hover {
+  background-color: var(--side-nav-active-color, #e5e5e5);
+}
+
+.yt-action-btn.yt-favorited {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.yt-music-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 36px;
+  background-color: #ef4444;
+  border: none;
+  border-radius: 18px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.yt-music-btn:hover {
+  background-color: #dc2626;
+}
+
+/* Mobile responsive - no horizontal scroll, wrap instead */
+@media screen and (max-width: 768px) {
+  .yt-action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .yt-like-pill,
+  .yt-action-btn,
+  .yt-music-btn {
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .yt-like-btn,
+  .yt-dislike-btn {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .yt-action-btn,
+  .yt-music-btn {
+    padding: 0 12px;
+  }
+}
+</style>
