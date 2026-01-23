@@ -106,7 +106,7 @@
                 <div class="yt-like-pill">
                   <button class="yt-like-btn">
                     <font-awesome-icon :icon="['fas', 'thumbs-up']" />
-                    <span>{{ formatCount(videoLikeCount) }}</span>
+                    <span class="yt-btn-text">{{ formatCount(videoLikeCount) }}</span>
                   </button>
                   <div class="yt-pill-divider"></div>
                   <button class="yt-dislike-btn">
@@ -115,31 +115,32 @@
                 </div>
 
                 <!-- Share -->
-                <button class="yt-action-btn">
+                <button class="yt-action-btn" title="分享">
                   <font-awesome-icon :icon="['fas', 'share']" />
-                  <span>分享</span>
+                  <span class="yt-btn-text">分享</span>
                 </button>
 
                 <!-- Download -->
-                <button class="yt-action-btn">
+                <button class="yt-action-btn" title="下載">
                   <font-awesome-icon :icon="['fas', 'download']" />
-                  <span>下載</span>
+                  <span class="yt-btn-text">下載</span>
                 </button>
 
                 <!-- Favorite -->
                 <button
                   class="yt-action-btn"
                   :class="{ 'yt-favorited': isFavorited }"
+                  :title="isFavorited ? '已收藏' : '收藏'"
                   @click="toggleFavorite"
                 >
                   <font-awesome-icon :icon="['fas', 'heart']" />
-                  <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
+                  <span class="yt-btn-text">{{ isFavorited ? '已收藏' : '收藏' }}</span>
                 </button>
 
                 <!-- Music Mode -->
-                <button class="yt-music-btn" @click="playAsMusic">
+                <button class="yt-music-btn" title="音樂模式" @click="playAsMusic">
                   <font-awesome-icon :icon="['fas', 'music']" />
-                  <span>音樂模式</span>
+                  <span class="yt-btn-text">音樂模式</span>
                 </button>
               </div>
             </div>
@@ -585,10 +586,42 @@ export default {
   background-color: #dc2626;
 }
 
-/* Mobile responsive - no horizontal scroll, wrap instead */
-@media screen and (max-width: 768px) {
+/* Mobile responsive - icon only on small screens */
+@media screen and (max-width: 640px) {
   .yt-action-buttons {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .yt-like-pill,
+  .yt-action-btn,
+  .yt-music-btn {
+    height: 36px;
+  }
+
+  .yt-like-btn,
+  .yt-dislike-btn {
+    padding: 0 12px;
+  }
+
+  /* Hide text labels on mobile - icon only */
+  .yt-btn-text {
+    display: none;
+  }
+
+  .yt-action-btn,
+  .yt-music-btn {
+    padding: 0;
+    width: 36px;
+    justify-content: center;
+  }
+}
+
+/* Tablet - show text but smaller */
+@media screen and (min-width: 641px) and (max-width: 900px) {
+  .yt-action-buttons {
+    flex-wrap: nowrap;
+    gap: 6px;
   }
 
   .yt-like-pill,
@@ -599,11 +632,7 @@ export default {
   }
 
   .yt-like-btn,
-  .yt-dislike-btn {
-    padding: 0 12px;
-    font-size: 13px;
-  }
-
+  .yt-dislike-btn,
   .yt-action-btn,
   .yt-music-btn {
     padding: 0 12px;
