@@ -212,3 +212,21 @@ img:not([loading="lazy"]) {
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* Mobile video player - FORCE full width */
+@media screen and (max-width: 639px) {
+  .yt-video-player .ftVideoPlayer,
+  .yt-video-player .ftVideoPlayer.sixteenByNine,
+  .yt-video-player .shaka-video-container {
+    width: 100vw !important;
+    height: 56.25vw !important;
+    aspect-ratio: unset !important;
+    max-width: none !important;
+  }
+
+  .yt-video-player video.player {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+}
