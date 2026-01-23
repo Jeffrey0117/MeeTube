@@ -815,11 +815,11 @@ export default {
 /* ==========================================
    RESPONSIVE - Mobile (<640px)
    ========================================== */
-@media screen and (max-width: 640px) {
+@media screen and (max-width: 639px) {
   .yt-watch-content {
     padding-left: 0;
     padding-right: 0;
-    padding-top: 48px;
+    padding-top: 48px; /* Match mobile header height */
   }
 
   .yt-video-player,
