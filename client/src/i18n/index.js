@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import yaml from 'js-yaml'
 import { createWebURL } from '../helpers/utils'
 // List of locales approved for use
 import activeLocales from '../../public/locales/activeLocales.json'
@@ -35,13 +36,14 @@ export async function loadLocale(locale) {
 
   let path
 
-  // MeeTube: load from public/locales
-  path = `/locales/${locale}.json`
+  // MeeTube: load from public/locales (YAML files)
+  path = `/locales/${locale}.yaml`
 
   const url = createWebURL(path)
 
   const response = await fetch(url)
-  const data = await response.json()
+  const yamlText = await response.text()
+  const data = yaml.load(yamlText)
   i18n.global.setLocaleMessage(locale, data)
 }
 
