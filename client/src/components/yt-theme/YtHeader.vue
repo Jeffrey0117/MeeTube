@@ -2,10 +2,10 @@
   <header class="yt-header">
     <!-- Left: Menu + Logo -->
     <div class="yt-header-left">
-      <button class="yt-menu-btn" @click="toggleSidebar">
+      <button class="yt-menu-btn" @click.stop="toggleSidebar">
         <font-awesome-icon :icon="['fas', 'bars']" />
       </button>
-      <router-link to="/yt" class="yt-logo">
+      <router-link to="/yt" class="yt-logo" @click.stop>
         <span class="yt-logo-mee">Mee</span>
         <span class="yt-logo-tube">Tube</span>
       </router-link>
@@ -532,13 +532,18 @@ export default {
   }
 
   .yt-header-left {
-    gap: 8px;
+    gap: 12px;
   }
 
   .yt-menu-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .yt-logo {
+    padding: 8px 4px;
   }
 
   .yt-logo-mee,
