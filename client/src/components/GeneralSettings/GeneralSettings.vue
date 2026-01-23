@@ -185,7 +185,7 @@ import FtButton from '../FtButton/FtButton.vue'
 
 import store from '../../store/index'
 
-import allLocales from '../../../../static/locales/activeLocales.json'
+import allLocales from '../../../public/locales/activeLocales.json'
 import { debounce, randomArrayItem, showToast } from '../../helpers/utils'
 import { translateWindowTitle } from '../../helpers/strings'
 

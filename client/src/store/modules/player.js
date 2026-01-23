@@ -9,14 +9,16 @@ const getters = {}
 
 const actions = {
   async cachePlayerLocale({ commit }, locale) {
-    const url = createWebURL(`/static/shaka-player-locales/${locale}.json`)
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    Object.freeze(data)
-
-    commit('addPlayerLocaleToCache', { locale, data })
+    try {
+      const url = createWebURL(`/shaka-player-locales/${locale}.json`)
+      const response = await fetch(url)
+      if (!response.ok) return // Skip if locale file doesn't exist
+      const data = await response.json()
+      Object.freeze(data)
+      commit('addPlayerLocaleToCache', { locale, data })
+    } catch {
+      // Gracefully fail if locale file doesn't exist
+    }
   }
 }
 

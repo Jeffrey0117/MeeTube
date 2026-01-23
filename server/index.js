@@ -54,8 +54,14 @@ app.use(session({
   },
 }))
 
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
 // API routes
 app.use('/api/v1', apiRoutes)
+app.use('/api', apiRoutes)  // Also mount at /api for compatibility
 app.use('/auth', authRoutes)
 
 // Proxy routes (thumbnails, video streaming)

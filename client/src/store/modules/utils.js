@@ -398,7 +398,7 @@ const actions = {
   async getRegionData ({ commit }, locale) {
     const localePathExists = process.env.GEOLOCATION_NAMES.includes(locale)
 
-    const url = createWebURL(`/static/geolocations/${localePathExists ? locale : 'en-US'}.json`)
+    const url = createWebURL(`/geolocations/${localePathExists ? locale : 'en-US'}.json`)
 
     const countries = await (await fetch(url)).json()
 
@@ -673,7 +673,7 @@ const actions = {
   },
 
   async getExternalPlayerCmdArgumentsData ({ commit }) {
-    const url = createWebURL('/static/external-player-map.json')
+    const url = createWebURL('/external-player-map.json')
     const externalPlayerMap = await (await fetch(url)).json()
     // Sort external players alphabetically & case-insensitive, keep default entry at the top
     const playerNone = externalPlayerMap.shift()

@@ -1,4 +1,4 @@
-import shaka from 'shaka-player'
+import shaka from 'shaka-player/dist/shaka-player.ui'
 
 import i18n from '../../../i18n/index'
 import { KeyboardShortcuts, PlayerIcons } from '../../../../constants'

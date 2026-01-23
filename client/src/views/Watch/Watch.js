@@ -338,9 +338,7 @@ export default defineComponent({
   },
   created: function () {
     this.videoId = this.$route.params.id
-    console.log('[DEBUG Watch created] defaultVideoFormat:', this.defaultVideoFormat)
     this.activeFormat = this.defaultVideoFormat
-    console.log('[DEBUG Watch created] activeFormat set to:', this.activeFormat)
     // So that the value for this session remains unchanged even if setting changed
     this.autoplayNextRecommendedVideo = this.autoplayNextRecommendedVideoByDefault
     this.autoplayNextPlaylistVideo = this.autoplayNextPlaylistVideoByDefault
@@ -1070,14 +1068,10 @@ export default defineComponent({
               return object
             }))
 
-            console.log('[DEBUG Watch] About to call createInvidiousDashManifest, result.dashUrl:', result.dashUrl)
             this.manifestSrc = await this.createInvidiousDashManifest(result)
-            console.log('[DEBUG Watch] manifestSrc set to:', this.manifestSrc?.substring(0, 100))
-            console.log('[DEBUG Watch] activeFormat before:', this.activeFormat)
             // Ensure activeFormat is 'dash' when using DASH manifest
             if (this.activeFormat === 'legacy') {
               this.activeFormat = 'dash'
-              console.log('[DEBUG Watch] activeFormat changed to dash')
             }
             this.manifestMimeType = MANIFEST_TYPE_DASH
           }
@@ -1110,9 +1104,32 @@ export default defineComponent({
       } else {
         parsedUrl = new URL(url)
       }
-      const expireString = parsedUrl.searchParams.get('expire')
 
-      return new Date(parseInt(expireString) * 1000)
+      // Check if this is a proxy URL (/videoplayback?url=...)
+      // If so, decode the original URL to get the expire parameter
+      const encodedUrl = parsedUrl.searchParams.get('url')
+      if (encodedUrl && parsedUrl.pathname === '/videoplayback') {
+        try {
+          // Decode base64url to get original YouTube URL
+          const originalUrl = atob(encodedUrl.replace(/-/g, '+').replace(/_/g, '/'))
+          const originalParsedUrl = new URL(originalUrl)
+          const expireString = originalParsedUrl.searchParams.get('expire')
+          if (expireString) {
+            return new Date(parseInt(expireString) * 1000)
+          }
+        } catch (e) {
+          console.warn('Failed to decode proxy URL for expiry date:', e)
+        }
+      }
+
+      // Direct URL with expire parameter
+      const expireString = parsedUrl.searchParams.get('expire')
+      if (expireString) {
+        return new Date(parseInt(expireString) * 1000)
+      }
+
+      // Fallback: set expiry to 6 hours from now (YouTube stream URLs typically expire in 6 hours)
+      return new Date(Date.now() + 6 * 60 * 60 * 1000)
     },
 
     /**

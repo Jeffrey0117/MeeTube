@@ -43,7 +43,7 @@ const getters = {
 
 const actions = {
   async fetchInvidiousInstancesFromFile({ commit }) {
-    const url = createWebURL('/static/invidious-instances.json')
+    const url = createWebURL('/invidious-instances.json')
 
     const fileData = await (await fetch(url)).json()
     const instances = fileData.filter(e => {

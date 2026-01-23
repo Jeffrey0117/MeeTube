@@ -299,16 +299,39 @@ router.get('/manifest/dash/id/:id', async (req, res) => {
     const streaming = info.streaming_data
 
     if (!streaming || !streaming.adaptive_formats) {
-      return res.status(404).send('No streaming data')
+      console.error(`[DASH] No streaming data for video: ${videoId}`)
+      return res.status(404).send('No streaming data available')
     }
 
-    const manifest = generateDashManifest(videoId, streaming.adaptive_formats, info.basic_info?.duration || 0)
+    // Filter out formats without URL or range data
+    const validFormats = streaming.adaptive_formats.filter(f => {
+      if (!f.url) {
+        console.warn(`[DASH] Skipping format ${f.itag}: no URL`)
+        return false
+      }
+      return true
+    })
+
+    if (validFormats.length === 0) {
+      console.error(`[DASH] No valid formats for video: ${videoId}`)
+      return res.status(404).send('No valid streaming formats')
+    }
+
+    console.log(`[DASH] Found ${validFormats.length} valid formats for ${videoId}`)
+
+    // Get base URL for absolute URLs in manifest
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'http'
+    const host = req.get('host')
+    const baseUrl = `${protocol}://${host}`
+
+    const manifest = generateDashManifest(videoId, validFormats, info.basic_info?.duration || 0, baseUrl)
 
     res.set('Content-Type', 'application/dash+xml')
     res.set('Cache-Control', 'no-cache')
+    res.set('Access-Control-Allow-Origin', '*')
     res.send(manifest)
   } catch (error) {
-    console.error('[DASH]', error.message)
+    console.error('[DASH]', error.message, error.stack)
     res.status(500).send('Error generating manifest')
   }
 })
@@ -330,7 +353,7 @@ router.get('/stats', (req, res) => {
 
 // === Helper Functions ===
 
-function generateDashManifest(videoId, adaptiveFormats, duration) {
+function generateDashManifest(videoId, adaptiveFormats, duration, baseUrl = '') {
   const durationSeconds = duration || 0
   const durationISO = `PT${Math.floor(durationSeconds / 3600)}H${Math.floor((durationSeconds % 3600) / 60)}M${durationSeconds % 60}S`
 
@@ -347,7 +370,8 @@ function generateDashManifest(videoId, adaptiveFormats, duration) {
     if (format[shortKey]) {
       return format[shortKey]
     }
-    return '0-0'
+    // If no range data, return null to indicate unavailable
+    return null
   }
 
   function escapeXml(str) {
@@ -360,6 +384,42 @@ function generateDashManifest(videoId, adaptiveFormats, duration) {
       .replace(/'/g, '&apos;')
   }
 
+  // Helper to build representation XML
+  function buildRepresentation(format, isVideo) {
+    const proxyUrl = toProxyUrl(format.url)
+    // Use absolute URL for better compatibility
+    const url = baseUrl ? `${baseUrl}${proxyUrl}` : proxyUrl
+    const codecs = format.mime_type?.match(/codecs="([^"]+)"/)?.[1] || ''
+    const initRange = getRange(format, 'init')
+    const indexRange = getRange(format, 'index')
+
+    // Skip format if missing critical range data
+    if (!initRange || !indexRange) {
+      console.warn(`[DASH] Format ${format.itag} missing range data, skipping`)
+      return ''
+    }
+
+    if (isVideo) {
+      const frameRate = format.fps ? ` frameRate="${format.fps}"` : ''
+      return `
+        <Representation id="${format.itag}" bandwidth="${format.bitrate || 0}" width="${format.width || 0}" height="${format.height || 0}" codecs="${codecs}"${frameRate}>
+          <BaseURL>${escapeXml(url)}</BaseURL>
+          <SegmentBase indexRange="${indexRange}">
+            <Initialization range="${initRange}"/>
+          </SegmentBase>
+        </Representation>`
+    } else {
+      const audioSampleRate = format.audio_sample_rate ? ` audioSamplingRate="${format.audio_sample_rate}"` : ''
+      return `
+        <Representation id="${format.itag}" bandwidth="${format.bitrate || 0}" codecs="${codecs}"${audioSampleRate}>
+          <BaseURL>${escapeXml(url)}</BaseURL>
+          <SegmentBase indexRange="${indexRange}">
+            <Initialization range="${initRange}"/>
+          </SegmentBase>
+        </Representation>`
+    }
+  }
+
   let adaptationSets = ''
 
   // Video formats by container type
@@ -367,49 +427,23 @@ function generateDashManifest(videoId, adaptiveFormats, duration) {
   const webmVideo = videoFormats.filter(f => f.mime_type?.includes('video/webm'))
 
   if (mp4Video.length > 0) {
-    let representations = ''
-    for (const format of mp4Video) {
-      const url = toProxyUrl(format.url)
-      const codecs = format.mime_type?.match(/codecs="([^"]+)"/)?.[1] || ''
-      const initRange = getRange(format, 'init')
-      const indexRange = getRange(format, 'index')
-
-      representations += `
-        <Representation id="${format.itag}" bandwidth="${format.bitrate || 0}" width="${format.width || 0}" height="${format.height || 0}" codecs="${codecs}">
-          <BaseURL>${escapeXml(url)}</BaseURL>
-          <SegmentBase indexRange="${indexRange}">
-            <Initialization range="${initRange}"/>
-          </SegmentBase>
-        </Representation>`
-    }
-
-    adaptationSets += `
-    <AdaptationSet mimeType="video/mp4" subsegmentAlignment="true">
+    const representations = mp4Video.map(f => buildRepresentation(f, true)).filter(Boolean).join('')
+    if (representations) {
+      adaptationSets += `
+    <AdaptationSet mimeType="video/mp4" subsegmentAlignment="true" startWithSAP="1">
       ${representations}
     </AdaptationSet>`
+    }
   }
 
   if (webmVideo.length > 0) {
-    let representations = ''
-    for (const format of webmVideo) {
-      const url = toProxyUrl(format.url)
-      const codecs = format.mime_type?.match(/codecs="([^"]+)"/)?.[1] || ''
-      const initRange = getRange(format, 'init')
-      const indexRange = getRange(format, 'index')
-
-      representations += `
-        <Representation id="${format.itag}" bandwidth="${format.bitrate || 0}" width="${format.width || 0}" height="${format.height || 0}" codecs="${codecs}">
-          <BaseURL>${escapeXml(url)}</BaseURL>
-          <SegmentBase indexRange="${indexRange}">
-            <Initialization range="${initRange}"/>
-          </SegmentBase>
-        </Representation>`
-    }
-
-    adaptationSets += `
-    <AdaptationSet mimeType="video/webm" subsegmentAlignment="true">
+    const representations = webmVideo.map(f => buildRepresentation(f, true)).filter(Boolean).join('')
+    if (representations) {
+      adaptationSets += `
+    <AdaptationSet mimeType="video/webm" subsegmentAlignment="true" startWithSAP="1">
       ${representations}
     </AdaptationSet>`
+    }
   }
 
   // Audio formats by container type
@@ -417,49 +451,29 @@ function generateDashManifest(videoId, adaptiveFormats, duration) {
   const webmAudio = audioFormats.filter(f => f.mime_type?.includes('audio/webm'))
 
   if (mp4Audio.length > 0) {
-    let representations = ''
-    for (const format of mp4Audio) {
-      const url = toProxyUrl(format.url)
-      const codecs = format.mime_type?.match(/codecs="([^"]+)"/)?.[1] || ''
-      const initRange = getRange(format, 'init')
-      const indexRange = getRange(format, 'index')
-
-      representations += `
-        <Representation id="${format.itag}" bandwidth="${format.bitrate || 0}" codecs="${codecs}">
-          <BaseURL>${escapeXml(url)}</BaseURL>
-          <SegmentBase indexRange="${indexRange}">
-            <Initialization range="${initRange}"/>
-          </SegmentBase>
-        </Representation>`
-    }
-
-    adaptationSets += `
-    <AdaptationSet mimeType="audio/mp4" subsegmentAlignment="true">
+    const representations = mp4Audio.map(f => buildRepresentation(f, false)).filter(Boolean).join('')
+    if (representations) {
+      adaptationSets += `
+    <AdaptationSet mimeType="audio/mp4" subsegmentAlignment="true" startWithSAP="1">
       ${representations}
     </AdaptationSet>`
+    }
   }
 
   if (webmAudio.length > 0) {
-    let representations = ''
-    for (const format of webmAudio) {
-      const url = toProxyUrl(format.url)
-      const codecs = format.mime_type?.match(/codecs="([^"]+)"/)?.[1] || ''
-      const initRange = getRange(format, 'init')
-      const indexRange = getRange(format, 'index')
-
-      representations += `
-        <Representation id="${format.itag}" bandwidth="${format.bitrate || 0}" codecs="${codecs}">
-          <BaseURL>${escapeXml(url)}</BaseURL>
-          <SegmentBase indexRange="${indexRange}">
-            <Initialization range="${initRange}"/>
-          </SegmentBase>
-        </Representation>`
-    }
-
-    adaptationSets += `
-    <AdaptationSet mimeType="audio/webm" subsegmentAlignment="true">
+    const representations = webmAudio.map(f => buildRepresentation(f, false)).filter(Boolean).join('')
+    if (representations) {
+      adaptationSets += `
+    <AdaptationSet mimeType="audio/webm" subsegmentAlignment="true" startWithSAP="1">
       ${representations}
     </AdaptationSet>`
+    }
+  }
+
+  // Ensure we have at least one adaptation set
+  if (!adaptationSets.trim()) {
+    console.error('[DASH] No valid adaptation sets generated')
+    throw new Error('No valid adaptation sets')
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>

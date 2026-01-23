@@ -430,18 +430,6 @@ export async function invidiousGetVideoInformation(videoId) {
     id: videoId,
   })
 
-  // Debug: 檢查 adaptiveFormats 資料
-  if (result && result.adaptiveFormats) {
-    const audioFormats = result.adaptiveFormats.filter(f => f.type && f.type.startsWith('audio/'))
-    const videoFormats = result.adaptiveFormats.filter(f => f.type && f.type.startsWith('video/'))
-    console.log('[invidiousGetVideoInformation] Video ID:', videoId)
-    console.log('[invidiousGetVideoInformation] Total adaptiveFormats:', result.adaptiveFormats.length)
-    console.log('[invidiousGetVideoInformation] Audio formats:', audioFormats.length, audioFormats.map(f => ({ itag: f.itag, type: f.type, audioQuality: f.audioQuality })))
-    console.log('[invidiousGetVideoInformation] Video formats:', videoFormats.length, videoFormats.map(f => ({ itag: f.itag, type: f.type, qualityLabel: f.qualityLabel })))
-  } else {
-    console.warn('[invidiousGetVideoInformation] No adaptiveFormats found for video:', videoId, result)
-  }
-
   return result
 }
 

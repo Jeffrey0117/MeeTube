@@ -1,7 +1,7 @@
 import { createI18n } from 'vue-i18n'
 import { createWebURL } from '../helpers/utils'
 // List of locales approved for use
-import activeLocales from '../../../static/locales/activeLocales.json'
+import activeLocales from '../../public/locales/activeLocales.json'
 
 const i18n = createI18n({
   locale: 'en-US',
@@ -35,12 +35,8 @@ export async function loadLocale(locale) {
 
   let path
 
-  // locales are only compressed in our production Electron builds
-  if (process.env.IS_ELECTRON && process.env.NODE_ENV !== 'development') {
-    path = `/static/locales/${locale}.json.br`
-  } else {
-    path = `/static/locales/${locale}.json`
-  }
+  // MeeTube: load from public/locales
+  path = `/locales/${locale}.json`
 
   const url = createWebURL(path)
 

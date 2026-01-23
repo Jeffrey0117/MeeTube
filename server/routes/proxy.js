@@ -133,23 +133,51 @@ router.get('/manifest', (req, res) => {
   })
 })
 
-// Video stream proxy
-router.get('/videoplayback', (req, res) => {
+// CORS preflight for video playback
+router.options('/videoplayback', (req, res) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+    'Access-Control-Allow-Headers': 'Range, Content-Type',
+    'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
+    'Access-Control-Max-Age': '86400',
+  })
+  res.status(204).end()
+})
+
+// Video stream proxy - also handle HEAD requests for content length
+router.get('/videoplayback', handleVideoPlayback)
+router.head('/videoplayback', handleVideoPlayback)
+
+function handleVideoPlayback(req, res) {
   const encodedUrl = req.query.url
   if (!encodedUrl) {
     return res.status(400).json({ error: 'Missing url parameter' })
   }
 
-  const targetUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8')
-  console.log(`[PROXY] Streaming: ${targetUrl.substring(0, 80)}...`)
+  let targetUrl
+  try {
+    targetUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8')
+  } catch (e) {
+    console.error('[PROXY] Failed to decode URL:', e.message)
+    return res.status(400).json({ error: 'Invalid URL encoding' })
+  }
 
-  const parsedUrl = new URL(targetUrl)
+  console.log(`[PROXY] ${req.method}: ${targetUrl.substring(0, 80)}...`)
+
+  let parsedUrl
+  try {
+    parsedUrl = new URL(targetUrl)
+  } catch (e) {
+    console.error('[PROXY] Invalid URL:', e.message)
+    return res.status(400).json({ error: 'Invalid URL' })
+  }
 
   const options = {
     hostname: parsedUrl.hostname,
     port: 443,
     path: parsedUrl.pathname + parsedUrl.search,
-    method: 'GET',
+    method: req.method,
     headers: {
       'User-Agent': 'com.google.android.youtube/19.02.39 (Linux; U; Android 14) gzip',
       'Accept-Encoding': 'identity',
@@ -164,6 +192,17 @@ router.get('/videoplayback', (req, res) => {
 
   const proxyReq = https.request(options, (proxyRes) => {
     console.log(`[PROXY] Status: ${proxyRes.statusCode}`)
+
+    // Handle redirects
+    if (proxyRes.statusCode === 302 || proxyRes.statusCode === 301) {
+      const redirectUrl = proxyRes.headers.location
+      if (redirectUrl) {
+        console.log(`[PROXY] Redirect to: ${redirectUrl.substring(0, 80)}...`)
+        // Re-encode the redirect URL and redirect client
+        const encoded = Buffer.from(redirectUrl).toString('base64url')
+        return res.redirect(`/videoplayback?url=${encoded}`)
+      }
+    }
 
     const headers = {
       'Access-Control-Allow-Origin': '*',
@@ -181,7 +220,14 @@ router.get('/videoplayback', (req, res) => {
     }
 
     res.writeHead(proxyRes.statusCode, headers)
-    proxyRes.pipe(res)
+
+    // For HEAD requests, don't pipe the body
+    if (req.method === 'HEAD') {
+      proxyRes.resume()
+      res.end()
+    } else {
+      proxyRes.pipe(res)
+    }
   })
 
   proxyReq.on('error', (e) => {
@@ -194,9 +240,12 @@ router.get('/videoplayback', (req, res) => {
   proxyReq.setTimeout(30000, () => {
     console.error('[PROXY TIMEOUT]')
     proxyReq.destroy()
+    if (!res.headersSent) {
+      res.status(504).json({ error: 'Timeout' })
+    }
   })
 
   proxyReq.end()
-})
+}
 
 export default router

@@ -1,5 +1,5 @@
 import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
-import shaka from 'shaka-player'
+import shaka from 'shaka-player/dist/shaka-player.ui'
 import { useI18n } from '../../composables/use-i18n-polyfill'
 import { useRoute } from 'vue-router'
 
@@ -2797,12 +2797,9 @@ export default defineComponent({
     async function performFirstLoad() {
       if (props.format === 'dash' || props.format === 'audio') {
         try {
-          console.log('[DEBUG performFirstLoad] manifestSrc:', props.manifestSrc?.substring(0, 100))
-          console.log('[DEBUG performFirstLoad] format:', props.format, 'defaultQuality:', defaultQuality.value)
           await player.load(props.manifestSrc, props.startTime, props.manifestMimeType)
 
           const variants = player.getVariantTracks()
-          console.log('[DEBUG performFirstLoad] Available variants:', variants.length, variants.map(v => `${v.width}x${v.height}`))
 
           if (defaultQuality.value !== 'auto') {
             if (props.format === 'dash') {
