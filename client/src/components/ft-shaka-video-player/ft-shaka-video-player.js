@@ -1110,7 +1110,11 @@ export default defineComponent({
           await store.dispatch('cachePlayerLocale', shakaLocale)
         }
 
-        localization.insert(shakaLocale, new Map(Object.entries(cachedLocales[shakaLocale])))
+        // Only insert locale if it was successfully cached
+        const localeData = cachedLocales[shakaLocale]
+        if (localeData) {
+          localization.insert(shakaLocale, new Map(Object.entries(localeData)))
+        }
 
         loadedLocales.add(shakaLocale)
       }
