@@ -13,6 +13,8 @@ import { StatsButton } from './player-components/StatsButton'
 import { TheatreModeButton } from './player-components/TheatreModeButton'
 import { AutoplayToggle } from './player-components/AutoplayToggle'
 import { SkipButton } from './player-components/SkipButton'
+import { EqualizerButton } from './player-components/EqualizerButton'
+import { EqualizerPanel } from './player-components/EqualizerPanel'
 import {
   deduplicateAudioTracks,
   findMostSimilarAudioBandwidth,
@@ -23,6 +25,11 @@ import {
   translateSponsorBlockCategory
 } from '../../helpers/player/utils'
 import { applyAudioGain } from '../../helpers/audio-gain'
+import {
+  updateEqualizerBands,
+  setEqualizerEnabled,
+  EQ_PRESETS
+} from '../../helpers/equalizer'
 import {
   addKeyboardShortcutToActionTitle,
   showToast,
@@ -844,6 +851,7 @@ export default defineComponent({
           'playback_rate',
           'captions',
           'ft_audio_tracks',
+          'ft_equalizer',
           'loop',
           'ft_screenshot',
           'picture_in_picture',
@@ -858,6 +866,7 @@ export default defineComponent({
       } else {
         uiConfig.controlPanelElements.push(
           'ft_screenshot',
+          'ft_equalizer',
           'ft_autoplay_toggle',
           'overflow_menu',
           'picture_in_picture',
@@ -871,6 +880,7 @@ export default defineComponent({
           'captions',
           'playback_rate',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
+          'ft_equalizer',
           'loop',
           'recenter_vr',
           'toggle_stereoscopic',
@@ -1949,6 +1959,102 @@ export default defineComponent({
       shakaOverflowMenu.registerElement('ft_skip_previous', new SkipPreviousButtonFactory())
     }
 
+    /** @type {EqualizerPanel | null} */
+    let equalizerPanel = null
+
+    function registerEqualizerButton() {
+      // Get EQ settings from store
+      const eqEnabled = store.getters.getEqualizerEnabled
+      const eqPresetId = store.getters.getEqualizerPresetId || 'flat'
+      let eqBands = [0, 0, 0, 0, 0]
+
+      try {
+        const customBands = store.getters.getEqualizerCustomBands
+        if (customBands) {
+          eqBands = JSON.parse(customBands)
+        }
+      } catch (e) {
+        console.warn('[Equalizer] Failed to parse custom bands:', e)
+      }
+
+      // If using a preset, use preset gains
+      if (eqPresetId !== 'custom' && EQ_PRESETS[eqPresetId]) {
+        eqBands = EQ_PRESETS[eqPresetId].gains
+      }
+
+      // Apply initial EQ settings to the audio
+      if (video.value) {
+        updateEqualizerBands(video.value, eqBands)
+        setEqualizerEnabled(video.value, eqEnabled)
+      }
+
+      // Handle EQ state changes
+      events.addEventListener('equalizerStateChanged', (/** @type {CustomEvent} */ event) => {
+        const { enabled, presetId, bands } = event.detail
+
+        if (video.value) {
+          setEqualizerEnabled(video.value, enabled)
+          updateEqualizerBands(video.value, bands)
+        }
+
+        // Save to store
+        store.dispatch('updateEqualizerEnabled', enabled)
+        store.dispatch('updateEqualizerPresetId', presetId)
+        store.dispatch('updateEqualizerCustomBands', JSON.stringify(bands))
+      })
+
+      events.addEventListener('equalizerBandChanged', (/** @type {CustomEvent} */ event) => {
+        const { bands } = event.detail
+
+        if (video.value) {
+          updateEqualizerBands(video.value, bands)
+        }
+      })
+
+      events.addEventListener('equalizerPresetChanged', (/** @type {CustomEvent} */ event) => {
+        const { presetId, bands } = event.detail
+
+        if (video.value) {
+          updateEqualizerBands(video.value, bands)
+        }
+
+        store.dispatch('updateEqualizerPresetId', presetId)
+        store.dispatch('updateEqualizerCustomBands', JSON.stringify(bands))
+      })
+
+      // Button factory
+      class EqualizerButtonFactory {
+        create(rootElement, controls) {
+          return new EqualizerButton(eqEnabled, events, rootElement, controls)
+        }
+      }
+
+      shakaControls.registerElement('ft_equalizer', new EqualizerButtonFactory())
+      shakaOverflowMenu.registerElement('ft_equalizer', new EqualizerButtonFactory())
+
+      // Create EQ panel
+      class EqualizerPanelFactory {
+        create(rootElement, controls) {
+          equalizerPanel = new EqualizerPanel(events, rootElement, controls, {
+            enabled: eqEnabled,
+            presetId: eqPresetId,
+            bands: eqBands
+          })
+          return equalizerPanel
+        }
+      }
+
+      // Register panel in the video container (container.value IS the video container)
+      const videoContainer = container.value
+      console.log('[EQ] Video container:', videoContainer)
+      if (videoContainer) {
+        new EqualizerPanelFactory().create(videoContainer, ui.getControls())
+        console.log('[EQ] Panel factory called')
+      } else {
+        console.error('[EQ] Video container not found!')
+      }
+    }
+
     /**
      * As shaka-player doesn't let you unregister custom control factories,
      * overwrite them with `null` instead so the referenced objects
@@ -1980,6 +2086,10 @@ export default defineComponent({
 
       shakaControls.registerElement('ft_skip_previous', null)
       shakaOverflowMenu.registerElement('ft_skip_previous', null)
+
+      shakaControls.registerElement('ft_equalizer', null)
+      shakaOverflowMenu.registerElement('ft_equalizer', null)
+      equalizerPanel = null
     }
 
     // #endregion custom player controls
@@ -2639,13 +2749,16 @@ export default defineComponent({
 
       // 使用 localStorage 持久保存音量設定（不會因為重新整理而遺失）
       const volume = localStorage.getItem('ft-volume')
+      console.log('[Volume] localStorage ft-volume:', volume)
       if (volume !== null) {
         videoElement.volume = parseFloat(volume)
+        console.log('[Volume] Set from localStorage:', parseFloat(volume))
       } else {
         // 預設音量 30%，避免太大聲
         const defaultVol = 0.3
         videoElement.volume = defaultVol
         localStorage.setItem('ft-volume', defaultVol.toString())
+        console.log('[Volume] No saved volume, using default:', defaultVol)
       }
 
       const muted = localStorage.getItem('ft-muted')
@@ -2657,8 +2770,30 @@ export default defineComponent({
 
       // 套用音量增益，讓我們比別人大聲
       const volumeGain = store.getters.getVolumeGain || 1.5
-      applyAudioGain(videoElement, volumeGain)
-      console.log('[ShakaPlayer] Applied audio gain:', volumeGain)
+
+      // 取得 EQ 設定
+      const eqEnabled = store.getters.getEqualizerEnabled
+      const eqPresetId = store.getters.getEqualizerPresetId || 'flat'
+      let eqGains = [0, 0, 0, 0, 0]
+      try {
+        const customBands = store.getters.getEqualizerCustomBands
+        if (customBands) {
+          eqGains = JSON.parse(customBands)
+        }
+      } catch (e) {
+        // ignore
+      }
+      // 如果使用預設，用預設的增益值
+      if (eqPresetId !== 'custom' && EQ_PRESETS[eqPresetId]) {
+        eqGains = EQ_PRESETS[eqPresetId].gains
+      }
+      // 如果 EQ 被停用，設為 flat
+      if (!eqEnabled) {
+        eqGains = [0, 0, 0, 0, 0]
+      }
+
+      applyAudioGain(videoElement, volumeGain, { eqEnabled, eqGains })
+      console.log('[ShakaPlayer] Applied audio gain:', volumeGain, 'EQ:', eqEnabled ? 'ON' : 'OFF')
 
       // 強制自動播放時，必須設為 muted 才能繞過瀏覽器限制
       if (forceAutoplay.value) {
@@ -2751,6 +2886,7 @@ export default defineComponent({
       registerLegacyQualitySelection()
       registerStatsButton()
       registerSkipButtons()
+      registerEqualizerButton()
 
       if (ui.isMobile()) {
         onlyUseOverFlowMenu.value = true

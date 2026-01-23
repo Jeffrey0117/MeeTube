@@ -320,8 +320,11 @@ const state = {
   // The settings below have side effects
   currentLocale: 'system',
   defaultInvidiousInstance: getDefaultApiUrl(),
-  defaultVolume: 1,
+  defaultVolume: 0.3, // 預設 30% 避免太大聲
   volumeGain: 1.5, // 音量增益倍數，1.5 = 150%，讓我們比別人大聲
+  equalizerEnabled: true,
+  equalizerPresetId: 'flat',
+  equalizerCustomBands: '[0,0,0,0,0]', // 自訂頻段增益 JSON 字串
   uiScale: 100,
   userPlaylistsSortBy: 'latest_played_first',
   userHistorySortBy: 'latest_played_first',

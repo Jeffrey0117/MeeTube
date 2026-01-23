@@ -1,18 +1,27 @@
 /**
  * Audio Gain Helper
  * 使用 Web Audio API 增強音量，讓我們的聲音比別人大聲
+ * 整合 5-band EQ 功能
  */
+
+import {
+  createEQFilters,
+  connectEQChain,
+  getAudioContextInfo,
+  setAudioContextInfo
+} from './equalizer'
 
 // 儲存已連接的 audio context 和 gain nodes
 const audioContextMap = new WeakMap()
 
 /**
- * 為 audio/video 元素套用音量增益
+ * 為 audio/video 元素套用音量增益 (整合 EQ)
  * @param {HTMLMediaElement} mediaElement - audio 或 video 元素
  * @param {number} gainValue - 增益倍數 (1.0 = 100%, 1.5 = 150%, 2.0 = 200%)
- * @returns {{ gainNode: GainNode, audioContext: AudioContext } | null}
+ * @param {{ eqEnabled?: boolean, eqGains?: number[] }} options - 額外選項
+ * @returns {{ gainNode: GainNode, audioContext: AudioContext, eqFilters: BiquadFilterNode[] } | null}
  */
-export function applyAudioGain(mediaElement, gainValue = 1.5) {
+export function applyAudioGain(mediaElement, gainValue = 1.5, options = {}) {
   if (!mediaElement || !(mediaElement instanceof HTMLMediaElement)) {
     console.warn('[AudioGain] Invalid media element')
     return null
@@ -33,19 +42,42 @@ export function applyAudioGain(mediaElement, gainValue = 1.5) {
     // 建立 media source
     const source = audioContext.createMediaElementSource(mediaElement)
 
+    // 建立 EQ filters
+    const eqFilters = createEQFilters(audioContext)
+
     // 建立 gain node
     const gainNode = audioContext.createGain()
     gainNode.gain.value = gainValue
 
-    // 連接: source -> gain -> destination
-    source.connect(gainNode)
+    // 連接音頻鏈: source -> EQ filters -> gain -> destination
+    // source -> [EQ chain] -> gainNode -> destination
+    connectEQChain(eqFilters, source, gainNode)
     gainNode.connect(audioContext.destination)
 
+    // 套用初始 EQ 設定
+    if (options.eqGains && Array.isArray(options.eqGains)) {
+      eqFilters.forEach((filter, i) => {
+        if (options.eqGains[i] !== undefined) {
+          filter.gain.value = options.eqGains[i]
+        }
+      })
+    }
+
     // 儲存到 map
-    const result = { audioContext, gainNode, source }
+    const result = {
+      audioContext,
+      gainNode,
+      source,
+      eqFilters,
+      eqEnabled: options.eqEnabled !== false,
+      savedGains: null
+    }
     audioContextMap.set(mediaElement, result)
 
-    console.log('[AudioGain] Applied gain', gainValue, 'to media element')
+    // 同步到 equalizer 模組
+    setAudioContextInfo(mediaElement, result)
+
+    console.log('[AudioGain] Applied gain', gainValue, 'with EQ to media element')
     return result
   } catch (error) {
     console.error('[AudioGain] Failed to apply gain:', error)
@@ -69,6 +101,15 @@ export function updateAudioGain(mediaElement, gainValue) {
 }
 
 /**
+ * 取得音頻上下文資訊
+ * @param {HTMLMediaElement} mediaElement
+ * @returns {object | null}
+ */
+export function getAudioContext(mediaElement) {
+  return audioContextMap.get(mediaElement) || null
+}
+
+/**
  * 移除音量增益
  * @param {HTMLMediaElement} mediaElement
  */
@@ -77,6 +118,9 @@ export function removeAudioGain(mediaElement) {
   if (existing) {
     try {
       existing.source.disconnect()
+      if (existing.eqFilters) {
+        existing.eqFilters.forEach(filter => filter.disconnect())
+      }
       existing.gainNode.disconnect()
       existing.audioContext.close()
     } catch (e) {

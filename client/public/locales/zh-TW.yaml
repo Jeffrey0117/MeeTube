@@ -844,6 +844,17 @@ Video:
     You appear to be offline: 您似乎已離線。
     Playback will resume automatically when your connection comes back: 當您的連線恢復時，將會自動繼續播放。
     Skipped segment: 已跳過 {segmentCategory} 段
+    Equalizer: 等化器
+    Reset: 重置
+    EQ Presets:
+      Custom: 自訂
+      Flat: 平坦
+      Bass Boost: 低音增強
+      Treble Boost: 高音增強
+      Vocal: 人聲
+      Electronic: 電子
+      Rock: 搖滾
+      Jazz: 爵士
     Autoplay is on: 自動播放已開啟
     Autoplay is off: 自動播放已關閉
   IP block: YouTube 已封鎖您的 IP 位址，因此無法觀看影片。請嘗試切換到其他 VPN 或代理伺服器。
