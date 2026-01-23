@@ -824,19 +824,21 @@ export default {
 
   .yt-video-player,
   .yt-video-loading {
-    width: 100vw !important;
-    height: 56.25vw !important;
-    min-height: 200px;
+    width: 100% !important;
+    height: 50vh !important;
+    min-height: 220px !important;
     border-radius: 0 !important;
+    aspect-ratio: unset !important;
   }
 
   .yt-video-player :deep(.ftVideoPlayer),
   .yt-video-player :deep(.ftVideoPlayer.sixteenByNine),
   .yt-video-player :deep(.shaka-video-container) {
-    width: 100vw !important;
-    height: 56.25vw !important;
+    width: 100% !important;
+    height: 50vh !important;
+    min-height: 220px !important;
     aspect-ratio: unset !important;
-    max-width: none !important;
+    max-width: 100% !important;
   }
 
   .yt-video-player :deep(video.player) {

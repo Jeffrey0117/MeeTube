@@ -213,15 +213,16 @@ img:not([loading="lazy"]) {
   }
 }
 
-/* Mobile video player - FORCE full width */
+/* Mobile video player - FORCE 50vh height like FreeTube */
 @media screen and (max-width: 639px) {
   .yt-video-player .ftVideoPlayer,
   .yt-video-player .ftVideoPlayer.sixteenByNine,
   .yt-video-player .shaka-video-container {
-    width: 100vw !important;
-    height: 56.25vw !important;
+    width: 100% !important;
+    height: 50vh !important;
+    min-height: 220px !important;
     aspect-ratio: unset !important;
-    max-width: none !important;
+    max-width: 100% !important;
   }
 
   .yt-video-player video.player {
