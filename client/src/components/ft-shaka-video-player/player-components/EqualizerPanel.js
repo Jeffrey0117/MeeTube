@@ -1,7 +1,44 @@
 import shaka from 'shaka-player/dist/shaka-player.ui'
 
-import i18n from '../../../i18n/index'
 import { EQ_BANDS, EQ_PRESETS } from '../../../helpers/equalizer'
+
+// 硬編碼中文字串
+const LABELS = {
+  equalizer: '等化器',
+  reset: '重置',
+  custom: '自訂',
+  audioEffects: '音效處理',
+  mono: '單聲道',
+  stereoWidth: '立體聲寬度',
+  reverb: '混響',
+  narrow: '窄',
+  normal: '正常',
+  wide: '寬',
+  presets: {
+    flat: '平坦',
+    acoustic: '原聲',
+    bass_boost: '低音增強',
+    bass_reducer: '低音減弱',
+    classical: '古典',
+    dance: '舞曲',
+    deep: '深沉',
+    electronic: '電子',
+    hip_hop: '嘻哈',
+    jazz: '爵士',
+    latin: '拉丁',
+    loudness: '響度',
+    lounge: '休閒',
+    piano: '鋼琴',
+    pop: '流行',
+    rnb: '節奏藍調',
+    rock: '搖滾',
+    small_speakers: '小喇叭',
+    spoken_word: '口說',
+    treble_boost: '高音增強',
+    treble_reducer: '高音減弱',
+    vocal: '人聲'
+  }
+}
 
 export class EqualizerPanel extends shaka.ui.Element {
   /**
@@ -83,7 +120,7 @@ export class EqualizerPanel extends shaka.ui.Element {
     /** @private */
     this.title_ = document.createElement('span')
     this.title_.classList.add('ft-eq-title')
-    this.title_.textContent = i18n.global.t('Video.Player.Equalizer')
+    this.title_.textContent = LABELS.equalizer
     header.appendChild(this.title_)
 
     // Toggle switch
@@ -170,7 +207,7 @@ export class EqualizerPanel extends shaka.ui.Element {
     // Section title
     const title = document.createElement('span')
     title.classList.add('ft-eq-effects-title')
-    title.textContent = i18n.global.t('Video.Player.Audio Effects')
+    title.textContent = LABELS.audioEffects
     /** @private */
     this.effectsTitle_ = title
     effectsSection.appendChild(title)
@@ -181,7 +218,7 @@ export class EqualizerPanel extends shaka.ui.Element {
 
     const monoLabel = document.createElement('span')
     monoLabel.classList.add('ft-eq-effect-label')
-    monoLabel.textContent = i18n.global.t('Video.Player.Mono')
+    monoLabel.textContent = LABELS.mono
     /** @private */
     this.monoLabel_ = monoLabel
     monoRow.appendChild(monoLabel)
@@ -213,7 +250,7 @@ export class EqualizerPanel extends shaka.ui.Element {
 
     const stereoLabel = document.createElement('span')
     stereoLabel.classList.add('ft-eq-effect-label')
-    stereoLabel.textContent = i18n.global.t('Video.Player.Stereo Width')
+    stereoLabel.textContent = LABELS.stereoWidth
     /** @private */
     this.stereoLabel_ = stereoLabel
     stereoRow.appendChild(stereoLabel)
@@ -253,7 +290,7 @@ export class EqualizerPanel extends shaka.ui.Element {
 
     const reverbLabel = document.createElement('span')
     reverbLabel.classList.add('ft-eq-effect-label')
-    reverbLabel.textContent = i18n.global.t('Video.Player.Reverb')
+    reverbLabel.textContent = LABELS.reverb
     /** @private */
     this.reverbLabel_ = reverbLabel
     reverbRow.appendChild(reverbLabel)
@@ -294,9 +331,9 @@ export class EqualizerPanel extends shaka.ui.Element {
 
   /** @private */
   formatStereoWidth_(value) {
-    if (value < 0.5) return i18n.global.t('Video.Player.Narrow')
-    if (value < 1.2) return i18n.global.t('Video.Player.Normal')
-    return i18n.global.t('Video.Player.Wide')
+    if (value < 0.5) return LABELS.narrow
+    if (value < 1.2) return LABELS.normal
+    return LABELS.wide
   }
 
   /** @private */
@@ -324,14 +361,14 @@ export class EqualizerPanel extends shaka.ui.Element {
     // Add custom option
     const customOption = document.createElement('option')
     customOption.value = 'custom'
-    customOption.textContent = i18n.global.t('Video.Player.EQ Presets.Custom')
+    customOption.textContent = LABELS.custom
     this.presetSelect_.appendChild(customOption)
 
     // Add preset options
     Object.values(EQ_PRESETS).forEach(preset => {
       const option = document.createElement('option')
       option.value = preset.id
-      option.textContent = i18n.global.t(`Video.Player.EQ Presets.${preset.name}`)
+      option.textContent = LABELS.presets[preset.id] || preset.name
       this.presetSelect_.appendChild(option)
     })
 
@@ -353,7 +390,7 @@ export class EqualizerPanel extends shaka.ui.Element {
     /** @private */
     this.resetButton_ = document.createElement('button')
     this.resetButton_.classList.add('ft-eq-reset')
-    this.resetButton_.textContent = i18n.global.t('Video.Player.Reset')
+    this.resetButton_.textContent = LABELS.reset
     this.resetButton_.type = 'button'
 
     this.eventManager.listen(this.resetButton_, 'click', () => {
@@ -451,34 +488,34 @@ export class EqualizerPanel extends shaka.ui.Element {
 
   /** @private */
   updateLocalisedStrings_() {
-    this.title_.textContent = i18n.global.t('Video.Player.Equalizer')
-    this.resetButton_.textContent = i18n.global.t('Video.Player.Reset')
+    this.title_.textContent = LABELS.equalizer
+    this.resetButton_.textContent = LABELS.reset
 
     // Update preset options
     const customOption = this.presetSelect_.querySelector('option[value="custom"]')
     if (customOption) {
-      customOption.textContent = i18n.global.t('Video.Player.EQ Presets.Custom')
+      customOption.textContent = LABELS.custom
     }
 
     Object.values(EQ_PRESETS).forEach(preset => {
       const option = this.presetSelect_.querySelector(`option[value="${preset.id}"]`)
       if (option) {
-        option.textContent = i18n.global.t(`Video.Player.EQ Presets.${preset.name}`)
+        option.textContent = LABELS.presets[preset.id] || preset.name
       }
     })
 
     // Update audio effects labels
     if (this.effectsTitle_) {
-      this.effectsTitle_.textContent = i18n.global.t('Video.Player.Audio Effects')
+      this.effectsTitle_.textContent = LABELS.audioEffects
     }
     if (this.monoLabel_) {
-      this.monoLabel_.textContent = i18n.global.t('Video.Player.Mono')
+      this.monoLabel_.textContent = LABELS.mono
     }
     if (this.stereoLabel_) {
-      this.stereoLabel_.textContent = i18n.global.t('Video.Player.Stereo Width')
+      this.stereoLabel_.textContent = LABELS.stereoWidth
     }
     if (this.reverbLabel_) {
-      this.reverbLabel_.textContent = i18n.global.t('Video.Player.Reverb')
+      this.reverbLabel_.textContent = LABELS.reverb
     }
     // Update stereo width value display
     if (this.stereoValue_) {
