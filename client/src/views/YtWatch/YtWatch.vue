@@ -439,6 +439,12 @@ export default {
   background-color: var(--bg-color, #fff);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.yt-watch-page::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .yt-watch-content {
@@ -811,17 +817,31 @@ export default {
    ========================================== */
 @media screen and (max-width: 640px) {
   .yt-watch-content {
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 48px;
+  }
+
+  .yt-video-player,
+  .yt-video-loading {
+    aspect-ratio: auto;
+    width: 100%;
+    height: 56vw; /* Larger video on mobile */
+    border-radius: 0;
+  }
+
+  .yt-video-info {
+    padding: 0 12px;
   }
 
   .yt-video-title {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .yt-channel-actions {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
   }
 
   .yt-action-buttons {
@@ -845,6 +865,15 @@ export default {
   .yt-like-btn,
   .yt-dislike-btn {
     padding: 0 10px;
+  }
+
+  .yt-description-box {
+    margin: 12px;
+    border-radius: 8px;
+  }
+
+  .yt-related-videos {
+    padding: 0 12px 24px;
   }
 
   .yt-related-thumbnail {
