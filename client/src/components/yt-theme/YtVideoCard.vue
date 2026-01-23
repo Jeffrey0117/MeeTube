@@ -1,59 +1,43 @@
 <template>
-  <router-link :to="`/yt/watch/${video.videoId}`" class="block">
-    <div class="flex flex-col mb-4">
-      <!-- Thumbnail -->
-      <div class="relative aspect-video rounded-xl overflow-hidden bg-gray-200 dark:bg-[#272727]">
+  <router-link :to="`/yt/watch/${video.videoId}`" class="yt-video-card">
+    <!-- Thumbnail -->
+    <div class="yt-thumbnail">
+      <img
+        v-if="thumbnailUrl"
+        :src="thumbnailUrl"
+        :alt="video.title"
+        loading="lazy"
+      />
+      <span v-if="video.lengthSeconds" class="yt-duration">
+        {{ formatDuration(video.lengthSeconds) }}
+      </span>
+      <span v-if="video.liveNow" class="yt-live-badge">LIVE</span>
+    </div>
+
+    <!-- Info -->
+    <div class="yt-info">
+      <!-- Channel Avatar -->
+      <div class="yt-avatar" :style="{ backgroundColor: avatarColor }">
         <img
-          v-if="thumbnailUrl"
-          :src="thumbnailUrl"
-          :alt="video.title"
-          class="h-full w-full object-cover"
-          loading="lazy"
+          v-if="channelThumbnail"
+          :src="channelThumbnail"
+          :alt="video.author"
+          @error="handleImageError"
         />
-        <div
-          v-if="video.lengthSeconds"
-          class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 py-0.5 rounded font-medium"
-        >
-          {{ formatDuration(video.lengthSeconds) }}
-        </div>
-        <div
-          v-if="video.liveNow"
-          class="absolute bottom-1 right-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded font-medium"
-        >
-          LIVE
-        </div>
+        <span v-else class="yt-avatar-text">{{ channelInitial }}</span>
       </div>
 
-      <!-- Info -->
-      <div class="flex mt-3">
-        <!-- Channel Avatar -->
-        <div class="flex-shrink-0 h-9 w-9 rounded-full overflow-hidden bg-blue-500 flex items-center justify-center">
-          <img
-            v-if="channelThumbnail"
-            :src="channelThumbnail"
-            :alt="video.author"
-            class="w-full h-full object-cover"
-            @error="handleImageError"
-          />
-          <span v-else class="text-white text-sm font-semibold">{{ channelInitial }}</span>
-        </div>
-
-        <!-- Text Info -->
-        <div class="flex flex-col ml-3 overflow-hidden">
-          <span class="text-sm font-medium line-clamp-2 text-black dark:text-white leading-5">
-            {{ video.title }}
-          </span>
-          <span class="text-xs text-gray-600 dark:text-gray-400 mt-1 flex items-center">
-            {{ video.author }}
-            <span v-if="video.authorVerified" class="ml-1">
-              <font-awesome-icon :icon="['fas', 'check-circle']" class="text-gray-500 text-[10px]" />
-            </span>
-          </span>
-          <div class="flex text-xs text-gray-600 dark:text-gray-400">
-            <span>{{ formatViews(video.viewCount) }} 次觀看</span>
-            <span class="mx-1">•</span>
-            <span>{{ formatPublishedText(video.publishedText) || formatPublished(video.published) }}</span>
-          </div>
+      <!-- Text Info -->
+      <div class="yt-text">
+        <span class="yt-title">{{ video.title }}</span>
+        <span class="yt-author">
+          {{ video.author }}
+          <font-awesome-icon v-if="video.authorVerified" :icon="['fas', 'check-circle']" class="yt-verified" />
+        </span>
+        <div class="yt-meta">
+          <span>{{ formatViews(video.viewCount) }} 次觀看</span>
+          <span class="yt-dot">•</span>
+          <span>{{ formatPublishedText(video.publishedText) || formatPublished(video.published) }}</span>
         </div>
       </div>
     </div>
@@ -72,7 +56,6 @@ export default {
   computed: {
     thumbnailUrl() {
       if (this.video.videoThumbnails && this.video.videoThumbnails.length > 0) {
-        // Prefer medium quality
         const medium = this.video.videoThumbnails.find(t => t.quality === 'medium' || t.quality === 'mqdefault')
         return medium?.url || this.video.videoThumbnails[0].url
       }
@@ -81,11 +64,9 @@ export default {
     channelThumbnail() {
       if (this.video.authorThumbnails && this.video.authorThumbnails.length > 0) {
         let url = this.video.authorThumbnails[0].url
-        // Handle protocol-relative URLs
         if (url.startsWith('//')) {
           url = 'https:' + url
         }
-        // Proxy yt3.ggpht.com/yt3.googleusercontent.com images through /ggpht/
         if (url.includes('yt3.ggpht.com')) {
           const path = url.replace(/https?:\/\/yt3\.ggpht\.com/, '')
           return '/ggpht' + path
@@ -94,7 +75,6 @@ export default {
           const path = url.replace(/https?:\/\/yt3\.googleusercontent\.com/, '')
           return '/ggpht' + path
         }
-        // For other URLs, use imgproxy with base64url encoding
         if (url.startsWith('http')) {
           const encoded = btoa(url).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
           return '/imgproxy?url=' + encoded
@@ -105,11 +85,17 @@ export default {
     },
     channelInitial() {
       return this.video.author ? this.video.author.charAt(0).toUpperCase() : '?'
+    },
+    avatarColor() {
+      // Generate consistent color based on author name
+      const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899']
+      if (!this.video.author) return colors[0]
+      const index = this.video.author.charCodeAt(0) % colors.length
+      return colors[index]
     }
   },
   methods: {
     handleImageError(e) {
-      // Hide the broken image and show initial instead
       e.target.style.display = 'none'
     },
     formatDuration(seconds) {
@@ -130,7 +116,6 @@ export default {
     },
     formatPublishedText(text) {
       if (!text) return ''
-      // Convert English time format to Chinese
       return text
         .replace(/(\d+)\s*years?\s*ago/i, '$1 年前')
         .replace(/(\d+)\s*months?\s*ago/i, '$1 個月前')
@@ -164,3 +149,123 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.yt-video-card {
+  display: block;
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.yt-thumbnail {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--side-nav-hover-color, #e5e5e5);
+}
+
+.yt-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt-duration {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.yt-live-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.yt-info {
+  display: flex;
+  flex-direction: row;
+  margin-top: 12px;
+}
+
+.yt-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt-avatar-text {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.yt-text {
+  display: flex;
+  flex-direction: column;
+  margin-left: 12px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.yt-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-text-color, #0f0f0f);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.yt-author {
+  font-size: 12px;
+  color: var(--tertiary-text-color, #606060);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.yt-verified {
+  font-size: 10px;
+  color: var(--tertiary-text-color, #606060);
+}
+
+.yt-meta {
+  font-size: 12px;
+  color: var(--tertiary-text-color, #606060);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.yt-dot {
+  margin: 0 2px;
+}
+</style>
