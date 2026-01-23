@@ -94,7 +94,9 @@ class BrowserDatastore {
       if (!item._id) {
         item._id = crypto.randomUUID()
       }
-      await this.store.setItem(item._id, item)
+      // Deep clone to remove Vue reactivity and ensure IndexedDB compatibility
+      const plainItem = JSON.parse(JSON.stringify(item))
+      await this.store.setItem(plainItem._id, plainItem)
     }
     this._invalidateCache()
     return Array.isArray(doc) ? toInsert : toInsert[0]
@@ -114,7 +116,9 @@ class BrowserDatastore {
       if (!newDoc._id) {
         newDoc._id = crypto.randomUUID()
       }
-      await this.store.setItem(newDoc._id, newDoc)
+      // Deep clone to remove Vue reactivity and ensure IndexedDB compatibility
+      const plainDoc = JSON.parse(JSON.stringify(newDoc))
+      await this.store.setItem(plainDoc._id, plainDoc)
       this._invalidateCache()
       return { numAffected: 1, upsert: true }
     }
@@ -123,7 +127,9 @@ class BrowserDatastore {
 
     for (const doc of toUpdate) {
       const updated = this._applyUpdate(doc, update)
-      await this.store.setItem(updated._id, updated)
+      // Deep clone to remove Vue reactivity and ensure IndexedDB compatibility
+      const plainUpdated = JSON.parse(JSON.stringify(updated))
+      await this.store.setItem(plainUpdated._id, plainUpdated)
       numAffected++
     }
 
