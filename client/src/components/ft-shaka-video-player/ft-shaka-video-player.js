@@ -2237,7 +2237,16 @@ export default defineComponent({
         return
       }
 
-      if (document.activeElement.classList.contains('ft-input') || event.altKey) {
+      // Skip keyboard shortcuts when typing in input fields
+      const activeEl = document.activeElement
+      const isInputFocused = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable ||
+        activeEl.classList.contains('ft-input')
+      )
+      if (isInputFocused || event.altKey) {
         return
       }
 

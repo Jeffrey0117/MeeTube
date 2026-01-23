@@ -206,6 +206,28 @@ export function convertSearchResults(results) {
         { quality: 'medium', url: `/vi/${videoId}/mqdefault.jpg`, width: 320, height: 180 },
         { quality: 'default', url: `/vi/${videoId}/default.jpg`, width: 120, height: 90 },
       ]
+
+      // Get author thumbnails if available
+      let authorThumbnails = []
+      const rawThumbs = item.author?.thumbnails || []
+      if (rawThumbs.length > 0) {
+        let thumbUrl = rawThumbs[0]?.url || ''
+        if (thumbUrl.startsWith('//')) {
+          thumbUrl = 'https:' + thumbUrl
+        }
+        if (thumbUrl.includes('yt3.ggpht.com')) {
+          const ggphtPath = thumbUrl.replace(/^https?:\/\/yt3\.ggpht\.com/, '')
+          thumbUrl = `/ggpht${ggphtPath}`
+        } else if (thumbUrl.includes('yt3.googleusercontent.com')) {
+          const ggphtPath = thumbUrl.replace(/^https?:\/\/yt3\.googleusercontent\.com/, '')
+          thumbUrl = `/ggpht${ggphtPath}`
+        }
+        authorThumbnails = [
+          { url: thumbUrl, width: 32, height: 32 },
+          { url: thumbUrl, width: 48, height: 48 },
+        ]
+      }
+
       return {
         type: 'video',
         title: item.title?.text || '',
@@ -213,6 +235,7 @@ export function convertSearchResults(results) {
         author: item.author?.name || '',
         authorId: item.author?.id || '',
         authorUrl: `/channel/${item.author?.id || ''}`,
+        authorThumbnails: authorThumbnails,
         videoThumbnails: videoThumbnails,
         description: item.description || '',
         viewCount: parseInt(item.view_count?.text?.replace(/[^0-9]/g, '') || '0'),

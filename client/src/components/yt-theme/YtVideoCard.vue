@@ -17,14 +17,16 @@
     <!-- Info -->
     <div class="yt-info">
       <!-- Channel Avatar -->
-      <div class="yt-avatar" :style="{ backgroundColor: avatarColor }">
+      <div class="yt-avatar" :style="{ backgroundColor: showFallback ? avatarColor : '#e5e5e5' }">
         <img
           v-if="channelThumbnail"
+          v-show="!avatarError"
           :src="channelThumbnail"
           :alt="video.author"
-          @error="handleImageError"
+          @load="avatarError = false"
+          @error="avatarError = true"
         />
-        <span v-else class="yt-avatar-text">{{ channelInitial }}</span>
+        <span v-if="showFallback" class="yt-avatar-text">{{ channelInitial }}</span>
       </div>
 
       <!-- Text Info -->
@@ -53,7 +55,15 @@ export default {
       required: true
     }
   },
+  data() {
+    return {
+      avatarError: false
+    }
+  },
   computed: {
+    showFallback() {
+      return !this.channelThumbnail || this.avatarError
+    },
     thumbnailUrl() {
       if (this.video.videoThumbnails && this.video.videoThumbnails.length > 0) {
         const medium = this.video.videoThumbnails.find(t => t.quality === 'medium' || t.quality === 'mqdefault')
@@ -95,9 +105,6 @@ export default {
     }
   },
   methods: {
-    handleImageError(e) {
-      e.target.style.display = 'none'
-    },
     formatDuration(seconds) {
       if (!seconds) return ''
       const h = Math.floor(seconds / 3600)
