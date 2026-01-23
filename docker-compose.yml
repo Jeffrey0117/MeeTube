@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  meetube:
+    build: .
+    container_name: meetube
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - YOUTUBE_COOKIE=${YOUTUBE_COOKIE:-}
+    volumes:
+      - meetube-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/v1/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  meetube-data:
+    driver: local

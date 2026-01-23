@@ -1,0 +1,343 @@
+import { createApp } from 'vue'
+import i18n from './i18n/index'
+import router from './router/index'
+import store from './store/index'
+import App from './App.vue'
+
+// 忽略 ResizeObserver 錯誤（這是無害的瀏覽器警告）
+if (typeof window !== 'undefined') {
+  const originalError = window.onerror
+  window.onerror = (message, ...args) => {
+    if (typeof message === 'string' && message.includes('ResizeObserver loop')) {
+      return true
+    }
+    return originalError?.(message, ...args)
+  }
+}
+import { showExternalPlayerUnsupportedActionToast, showToast } from './helpers/utils'
+import { library } from './fontawesome-minimal'
+// import the styles
+import '@fortawesome/fontawesome-svg-core/styles.css'
+import './styles/tailwind.css'
+
+import { register as registerSwiper } from 'swiper/element'
+
+import { ObserveVisibility } from 'vue-observe-visibility'
+
+// Please keep the list of constants sorted by name
+// to avoid code conflict and duplicate entries
+import {
+  faAngleDown,
+  faAngleLeft,
+  faAngleUp,
+  faArrowDown,
+  faArrowDownShortWide,
+  faArrowDownWideShort,
+  faArrowLeft,
+  faArrowRight,
+  faArrowUp,
+  faBars,
+  faBarsProgress,
+  faBorderAll,
+  faBookmark,
+  faCheck,
+  faChevronDown,
+  faChevronRight,
+  faCircleExclamation,
+  faCirclePlay,
+  faCircleUser,
+  faClapperboard,
+  faClock,
+  faClockRotateLeft,
+  faClone,
+  faComment,
+  faCommentDots,
+  faCopy,
+  faDatabase,
+  faDisplay,
+  faDownload,
+  faEdit,
+  faEllipsisH,
+  faEllipsisV,
+  faEnvelope,
+  faExchangeAlt,
+  faExclamationCircle,
+  faExpand,
+  faExternalLinkAlt,
+  faEye,
+  faEyeSlash,
+  faFileDownload,
+  faFileImage,
+  faFileVideo,
+  faFilm,
+  faFilter,
+  faFilterCircleXmark,
+  faFlask,
+  faFire,
+  faForward,
+  faGamepad,
+  faGauge,
+  faGlobe,
+  faGrip,
+  faGripVertical,
+  faHashtag,
+  faHeart,
+  faHistory,
+  faIdCard,
+  faImages,
+  faInfoCircle,
+  faKey,
+  faKeyboard,
+  faLanguage,
+  faLink,
+  faLinkSlash,
+  faList,
+  faLocationDot,
+  faLock,
+  faMessage,
+  faMoneyCheckDollar,
+  faMusic,
+  faNetworkWired,
+  faNewspaper,
+  faPalette,
+  faPause,
+  faPhotoFilm,
+  faPlay,
+  faPlus,
+  faPodcast,
+  faQuestionCircle,
+  faRandom,
+  faRedo,
+  faRetweet,
+  faRss,
+  faSatelliteDish,
+  faSave,
+  faSearch,
+  faServer,
+  faShare,
+  faShareAlt,
+  faShield,
+  faSlash,
+  faSlidersH,
+  faSortAlphaDown,
+  faSortAlphaDownAlt,
+  faSortDown,
+  faSpinner,
+  faStepBackward,
+  faStepForward,
+  faSync,
+  faThumbsDown,
+  faThumbsUp,
+  faThumbtack,
+  faTimes,
+  faTimesCircle,
+  faTowerBroadcast,
+  faTrash,
+  faTrophy,
+  faUser,
+  faUserCheck,
+  faUserLock,
+  faUsers,
+  faUserSecret,
+  faUsersSlash,
+  faVideo,
+  faVolumeHigh,
+  faVolumeLow,
+  faVolumeMute,
+  faWifi,
+  faXmark
+} from '@fortawesome/free-solid-svg-icons'
+import {
+  faBookmark as farBookmark,
+  faDotCircle as farDotCircle
+} from '@fortawesome/free-regular-svg-icons'
+import {
+  faBitcoin,
+  faGithub,
+  faMastodon,
+} from '@fortawesome/free-brands-svg-icons'
+import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
+
+// Please keep the list of constants sorted by name
+// to avoid code conflict and duplicate entries
+library.add(
+  // solid icons
+  faAngleDown,
+  faAngleLeft,
+  faAngleUp,
+  faArrowDown,
+  faArrowDownShortWide,
+  faArrowDownWideShort,
+  faArrowLeft,
+  faArrowRight,
+  faArrowUp,
+  faBars,
+  faBarsProgress,
+  faBorderAll,
+  faBookmark,
+  faCheck,
+  faChevronDown,
+  faChevronRight,
+  faCircleExclamation,
+  faCirclePlay,
+  faCircleUser,
+  faClapperboard,
+  faClock,
+  faClockRotateLeft,
+  faClone,
+  faComment,
+  faCommentDots,
+  faCopy,
+  faDatabase,
+  faDisplay,
+  faDownload,
+  faEdit,
+  faEllipsisH,
+  faEllipsisV,
+  faEnvelope,
+  faExchangeAlt,
+  faExclamationCircle,
+  faExpand,
+  faExternalLinkAlt,
+  faEye,
+  faEyeSlash,
+  faFileDownload,
+  faFileImage,
+  faFileVideo,
+  faFilm,
+  faFilter,
+  faFilterCircleXmark,
+  faFlask,
+  faFire,
+  faForward,
+  faGamepad,
+  faGauge,
+  faGlobe,
+  faGrip,
+  faGripVertical,
+  faHashtag,
+  faHeart,
+  faHistory,
+  faIdCard,
+  faImages,
+  faInfoCircle,
+  faKey,
+  faKeyboard,
+  faLanguage,
+  faLink,
+  faLinkSlash,
+  faList,
+  faLocationDot,
+  faLock,
+  faMessage,
+  faMoneyCheckDollar,
+  faMusic,
+  faNetworkWired,
+  faNewspaper,
+  faPalette,
+  faPause,
+  faPhotoFilm,
+  faPlay,
+  faPlus,
+  faPodcast,
+  faQuestionCircle,
+  faRandom,
+  faRedo,
+  faRetweet,
+  faRss,
+  faSatelliteDish,
+  faSave,
+  faSearch,
+  faServer,
+  faShare,
+  faShareAlt,
+  faShield,
+  faSlash,
+  faSlidersH,
+  faSortAlphaDown,
+  faSortAlphaDownAlt,
+  faSortDown,
+  faSpinner,
+  faStepBackward,
+  faStepForward,
+  faSync,
+  faThumbsDown,
+  faThumbsUp,
+  faThumbtack,
+  faTimes,
+  faTimesCircle,
+  faTowerBroadcast,
+  faTrash,
+  faTrophy,
+  faUser,
+  faUserCheck,
+  faUserLock,
+  faUsers,
+  faUserSecret,
+  faUsersSlash,
+  faVideo,
+  faVolumeHigh,
+  faVolumeLow,
+  faVolumeMute,
+  faWifi,
+  faXmark,
+
+  // regular icons
+  farBookmark,
+  farDotCircle,
+
+  // brand icons
+  faGithub,
+  faBitcoin,
+  faMastodon,
+)
+
+registerSwiper()
+
+// 忽略 ResizeObserver loop 錯誤 (常見於 webpack-dev-server)
+const resizeObserverErr = window.onerror
+window.onerror = function (message, source, lineno, colno, error) {
+  if (message && typeof message === 'string' && message.includes('ResizeObserver')) {
+    return true
+  }
+  if (resizeObserverErr) {
+    return resizeObserverErr(message, source, lineno, colno, error)
+  }
+  return false
+}
+
+// 攔截所有 error 事件
+window.addEventListener('error', (event) => {
+  if (event.message && event.message.includes('ResizeObserver')) {
+    event.stopImmediatePropagation()
+    event.preventDefault()
+    return true
+  }
+}, true)
+
+// 攔截 unhandledrejection
+window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason && event.reason.message && event.reason.message.includes('ResizeObserver')) {
+    event.preventDefault()
+    return true
+  }
+})
+
+const app = createApp(App)
+
+app.config.performance = process.env.NODE_ENV === 'development'
+
+app
+  .component('FontAwesomeIcon', FontAwesomeIcon)
+  .component('FontAwesomeLayers', FontAwesomeLayers)
+  .directive('observe-visibility', ObserveVisibility)
+
+  .use(router)
+  .use(store)
+  .use(i18n)
+
+router.isReady().then(() => {
+  app.mount('#app')
+})
+
+// MeeTube - Web only, no Electron

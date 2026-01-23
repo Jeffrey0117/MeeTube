@@ -1,0 +1,48 @@
+import { createStore } from 'vuex'
+// import createPersistedState from 'vuex-persistedstate'
+
+import history from './modules/history'
+import invidious from './modules/invidious'
+import playlists from './modules/playlists'
+import profiles from './modules/profiles'
+import settings from './modules/settings'
+import searchHistory from './modules/search-history'
+import subscriptionCache from './modules/subscription-cache'
+import utils from './modules/utils'
+import player from './modules/player'
+import musicMode from './modules/musicMode'
+import favorites from './modules/favorites'
+import courses from './modules/courses'
+import subscriptions from './modules/subscriptions'
+import onboarding from './modules/onboarding'
+import user from './modules/user'
+import youtubeAuth from './modules/youtube-auth'
+
+export default createStore({
+  modules: {
+    history,
+    invidious,
+    playlists,
+    profiles,
+    settings,
+    searchHistory,
+    subscriptionCache,
+    subscriptions,
+    utils,
+    player,
+    musicMode,
+    favorites,
+    courses,
+    onboarding,
+    user,
+    youtubeAuth,
+  },
+
+  // Detects unsafe changes to the store state e.g. outside of mutations
+  // but we have to turn it off despite its usefulness as we have so much data in the store
+  // that it causes a noticable slow-down :(
+  strict: false
+
+  // TODO: Enable when deploy
+  // plugins: [createPersistedState()]
+})
