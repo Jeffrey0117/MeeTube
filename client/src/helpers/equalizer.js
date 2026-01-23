@@ -13,6 +13,7 @@ export const EQ_BANDS = [
 ]
 
 // 預設列表 (gains: [60Hz, 250Hz, 1kHz, 4kHz, 16kHz])
+// 使用較大的增益值讓效果更明顯
 export const EQ_PRESETS = {
   flat: {
     id: 'flat',
@@ -22,107 +23,107 @@ export const EQ_PRESETS = {
   acoustic: {
     id: 'acoustic',
     name: 'Acoustic',
-    gains: [5, 4, 3, 1, 2]
+    gains: [10, 8, 6, 3, 5]
   },
   bass_boost: {
     id: 'bass_boost',
     name: 'Bass Boost',
-    gains: [8, 6, 0, 0, 0]
+    gains: [15, 12, 0, 0, 0]
   },
   bass_reducer: {
     id: 'bass_reducer',
     name: 'Bass Reducer',
-    gains: [-8, -6, 0, 0, 0]
+    gains: [-15, -12, 0, 0, 0]
   },
   classical: {
     id: 'classical',
     name: 'Classical',
-    gains: [5, 3, -2, 2, 4]
+    gains: [10, 6, -4, 5, 8]
   },
   dance: {
     id: 'dance',
     name: 'Dance',
-    gains: [6, 4, 2, 0, -2]
+    gains: [12, 8, 4, 0, -4]
   },
   deep: {
     id: 'deep',
     name: 'Deep',
-    gains: [5, 3, 1, -1, -3]
+    gains: [12, 8, 3, -3, -6]
   },
   electronic: {
     id: 'electronic',
     name: 'Electronic',
-    gains: [5, 3, 0, 3, 5]
+    gains: [12, 6, 0, 6, 12]
   },
   hip_hop: {
     id: 'hip_hop',
     name: 'Hip-Hop',
-    gains: [6, 5, 0, 2, -1]
+    gains: [14, 10, 0, 4, -2]
   },
   jazz: {
     id: 'jazz',
     name: 'Jazz',
-    gains: [4, 2, -2, 2, 5]
+    gains: [8, 4, -4, 5, 10]
   },
   latin: {
     id: 'latin',
     name: 'Latin',
-    gains: [4, 2, 0, 0, 4]
+    gains: [8, 5, 0, 0, 8]
   },
   loudness: {
     id: 'loudness',
     name: 'Loudness',
-    gains: [6, 4, 0, 0, 6]
+    gains: [12, 8, 0, 0, 12]
   },
   lounge: {
     id: 'lounge',
     name: 'Lounge',
-    gains: [-3, 2, 3, 1, -2]
+    gains: [-6, 4, 6, 2, -4]
   },
   piano: {
     id: 'piano',
     name: 'Piano',
-    gains: [3, -1, 2, 4, 3]
+    gains: [6, -2, 5, 8, 6]
   },
   pop: {
     id: 'pop',
     name: 'Pop',
-    gains: [-1, 3, 5, 3, -1]
+    gains: [-2, 6, 10, 6, -2]
   },
   rnb: {
     id: 'rnb',
     name: 'R&B',
-    gains: [6, 5, -1, 2, 3]
+    gains: [12, 10, -2, 5, 6]
   },
   rock: {
     id: 'rock',
     name: 'Rock',
-    gains: [5, 3, -1, 3, 5]
+    gains: [10, 6, -2, 6, 10]
   },
   small_speakers: {
     id: 'small_speakers',
     name: 'Small Speakers',
-    gains: [6, 4, 2, 0, -2]
+    gains: [12, 8, 4, 0, -4]
   },
   spoken_word: {
     id: 'spoken_word',
     name: 'Spoken Word',
-    gains: [-3, 0, 4, 3, 0]
+    gains: [-6, 0, 10, 8, 0]
   },
   treble_boost: {
     id: 'treble_boost',
     name: 'Treble Boost',
-    gains: [0, 0, 0, 6, 8]
+    gains: [0, 0, 0, 12, 15]
   },
   treble_reducer: {
     id: 'treble_reducer',
     name: 'Treble Reducer',
-    gains: [0, 0, 0, -6, -8]
+    gains: [0, 0, 0, -12, -15]
   },
   vocal: {
     id: 'vocal',
     name: 'Vocal',
-    gains: [-2, 0, 5, 4, 1]
+    gains: [-4, 0, 12, 10, 2]
   }
 }
 
