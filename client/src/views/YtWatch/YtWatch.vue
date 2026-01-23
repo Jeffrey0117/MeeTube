@@ -824,9 +824,9 @@ export default {
 
   .yt-video-player,
   .yt-video-loading {
-    aspect-ratio: auto;
+    aspect-ratio: 16 / 9;
     width: 100%;
-    height: 56vw; /* Larger video on mobile */
+    height: auto;
     border-radius: 0;
   }
 
