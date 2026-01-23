@@ -849,12 +849,27 @@ Video:
     EQ Presets:
       Custom: 自訂
       Flat: 平坦
+      Acoustic: 原聲
       Bass Boost: 低音增強
-      Treble Boost: 高音增強
-      Vocal: 人聲
+      Bass Reducer: 低音減弱
+      Classical: 古典
+      Dance: 舞曲
+      Deep: 深沉
       Electronic: 電子
-      Rock: 搖滾
+      Hip-Hop: 嘻哈
       Jazz: 爵士
+      Latin: 拉丁
+      Loudness: 響度
+      Lounge: 休閒
+      Piano: 鋼琴
+      Pop: 流行
+      R&B: 節奏藍調
+      Rock: 搖滾
+      Small Speakers: 小喇叭
+      Spoken Word: 口說
+      Treble Boost: 高音增強
+      Treble Reducer: 高音減弱
+      Vocal: 人聲
     Autoplay is on: 自動播放已開啟
     Autoplay is off: 自動播放已關閉
   IP block: YouTube 已封鎖您的 IP 位址，因此無法觀看影片。請嘗試切換到其他 VPN 或代理伺服器。

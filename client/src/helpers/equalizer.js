@@ -12,42 +12,117 @@ export const EQ_BANDS = [
   { frequency: 16000, type: 'highshelf', label: 'Treble' }
 ]
 
-// 預設列表
+// 預設列表 (gains: [60Hz, 250Hz, 1kHz, 4kHz, 16kHz])
 export const EQ_PRESETS = {
   flat: {
     id: 'flat',
     name: 'Flat',
     gains: [0, 0, 0, 0, 0]
   },
+  acoustic: {
+    id: 'acoustic',
+    name: 'Acoustic',
+    gains: [5, 4, 3, 1, 2]
+  },
   bass_boost: {
     id: 'bass_boost',
     name: 'Bass Boost',
-    gains: [6, 4, 0, 0, 0]
+    gains: [8, 6, 0, 0, 0]
   },
-  treble_boost: {
-    id: 'treble_boost',
-    name: 'Treble Boost',
-    gains: [0, 0, 0, 4, 6]
+  bass_reducer: {
+    id: 'bass_reducer',
+    name: 'Bass Reducer',
+    gains: [-8, -6, 0, 0, 0]
   },
-  vocal: {
-    id: 'vocal',
-    name: 'Vocal',
-    gains: [-2, 0, 4, 2, 0]
+  classical: {
+    id: 'classical',
+    name: 'Classical',
+    gains: [5, 3, -2, 2, 4]
+  },
+  dance: {
+    id: 'dance',
+    name: 'Dance',
+    gains: [6, 4, 2, 0, -2]
+  },
+  deep: {
+    id: 'deep',
+    name: 'Deep',
+    gains: [5, 3, 1, -1, -3]
   },
   electronic: {
     id: 'electronic',
     name: 'Electronic',
-    gains: [4, 2, 0, 2, 4]
+    gains: [5, 3, 0, 3, 5]
   },
-  rock: {
-    id: 'rock',
-    name: 'Rock',
-    gains: [4, 2, -1, 2, 4]
+  hip_hop: {
+    id: 'hip_hop',
+    name: 'Hip-Hop',
+    gains: [6, 5, 0, 2, -1]
   },
   jazz: {
     id: 'jazz',
     name: 'Jazz',
-    gains: [3, 0, 2, 3, 4]
+    gains: [4, 2, -2, 2, 5]
+  },
+  latin: {
+    id: 'latin',
+    name: 'Latin',
+    gains: [4, 2, 0, 0, 4]
+  },
+  loudness: {
+    id: 'loudness',
+    name: 'Loudness',
+    gains: [6, 4, 0, 0, 6]
+  },
+  lounge: {
+    id: 'lounge',
+    name: 'Lounge',
+    gains: [-3, 2, 3, 1, -2]
+  },
+  piano: {
+    id: 'piano',
+    name: 'Piano',
+    gains: [3, -1, 2, 4, 3]
+  },
+  pop: {
+    id: 'pop',
+    name: 'Pop',
+    gains: [-1, 3, 5, 3, -1]
+  },
+  rnb: {
+    id: 'rnb',
+    name: 'R&B',
+    gains: [6, 5, -1, 2, 3]
+  },
+  rock: {
+    id: 'rock',
+    name: 'Rock',
+    gains: [5, 3, -1, 3, 5]
+  },
+  small_speakers: {
+    id: 'small_speakers',
+    name: 'Small Speakers',
+    gains: [6, 4, 2, 0, -2]
+  },
+  spoken_word: {
+    id: 'spoken_word',
+    name: 'Spoken Word',
+    gains: [-3, 0, 4, 3, 0]
+  },
+  treble_boost: {
+    id: 'treble_boost',
+    name: 'Treble Boost',
+    gains: [0, 0, 0, 6, 8]
+  },
+  treble_reducer: {
+    id: 'treble_reducer',
+    name: 'Treble Reducer',
+    gains: [0, 0, 0, -6, -8]
+  },
+  vocal: {
+    id: 'vocal',
+    name: 'Vocal',
+    gains: [-2, 0, 5, 4, 1]
   }
 }
 

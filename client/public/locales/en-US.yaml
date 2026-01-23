@@ -986,12 +986,27 @@ Video:
     EQ Presets:
       Custom: Custom
       Flat: Flat
+      Acoustic: Acoustic
       Bass Boost: Bass Boost
-      Treble Boost: Treble Boost
-      Vocal: Vocal
+      Bass Reducer: Bass Reducer
+      Classical: Classical
+      Dance: Dance
+      Deep: Deep
       Electronic: Electronic
-      Rock: Rock
+      Hip-Hop: Hip-Hop
       Jazz: Jazz
+      Latin: Latin
+      Loudness: Loudness
+      Lounge: Lounge
+      Piano: Piano
+      Pop: Pop
+      R&B: R&B
+      Rock: Rock
+      Small Speakers: Small Speakers
+      Spoken Word: Spoken Word
+      Treble Boost: Treble Boost
+      Treble Reducer: Treble Reducer
+      Vocal: Vocal
 #& Playlists
 Playlist:
   #& About
