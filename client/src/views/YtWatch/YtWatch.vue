@@ -824,10 +824,16 @@ export default {
 
   .yt-video-player,
   .yt-video-loading {
-    aspect-ratio: 16 / 9;
-    width: 100%;
-    height: auto;
-    border-radius: 0;
+    width: 100vw !important;
+    height: 56.25vw !important; /* 16:9 = 9/16 * 100vw */
+    min-height: 200px;
+    border-radius: 0 !important;
+  }
+
+  .yt-video-player :deep(video),
+  .yt-video-player :deep(.shaka-video-container) {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .yt-video-info {
