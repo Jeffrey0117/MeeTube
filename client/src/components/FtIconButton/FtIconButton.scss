@@ -1,8 +1,8 @@
 /* stylelint-disable no-descending-specificity */
 .ftIconButton {
-  display: flex;
-  flex-flow: row wrap;
-  justify-content: space-evenly;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
   position: relative;
   line-height: normal;
   user-select: none;
