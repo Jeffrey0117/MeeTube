@@ -1007,6 +1007,13 @@ Video:
       Treble Boost: Treble Boost
       Treble Reducer: Treble Reducer
       Vocal: Vocal
+    Audio Effects: Audio Effects
+    Mono: Mono
+    Stereo Width: Stereo Width
+    Reverb: Reverb
+    Narrow: Narrow
+    Normal: Normal
+    Wide: Wide
 #& Playlists
 Playlist:
   #& About

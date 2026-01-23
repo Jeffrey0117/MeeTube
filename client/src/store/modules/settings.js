@@ -325,6 +325,9 @@ const state = {
   equalizerEnabled: true,
   equalizerPresetId: 'flat',
   equalizerCustomBands: '[0,0,0,0,0]', // 自訂頻段增益 JSON 字串
+  audioEffectsMono: false, // 單聲道模式
+  audioEffectsStereoWidth: 1, // 立體聲寬度 (0-2, 1=正常)
+  audioEffectsReverb: 0, // 混響量 (0-1)
   uiScale: 100,
   userPlaylistsSortBy: 'latest_played_first',
   userHistorySortBy: 'latest_played_first',

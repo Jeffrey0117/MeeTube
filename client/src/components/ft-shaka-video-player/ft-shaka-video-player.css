@@ -598,6 +598,100 @@
   background-color: rgb(255 255 255 / 20%);
 }
 
+/* Audio Effects Section */
+:deep(.ft-eq-effects) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+}
+
+:deep(.ft-eq-effects-title) {
+  color: rgb(255 255 255 / 70%);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+:deep(.ft-eq-effect-row) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+:deep(.ft-eq-effect-label) {
+  color: #fff;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+:deep(.ft-eq-effect-slider-container) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 160px;
+}
+
+:deep(.ft-eq-effect-slider) {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 2px;
+  outline: none;
+}
+
+:deep(.ft-eq-effect-slider::-webkit-slider-thumb) {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary-color, #f00);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+:deep(.ft-eq-effect-slider::-webkit-slider-thumb:hover) {
+  transform: scale(1.2);
+}
+
+:deep(.ft-eq-effect-slider::-moz-range-thumb) {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary-color, #f00);
+  cursor: pointer;
+  border: none;
+}
+
+:deep(.ft-eq-effect-value) {
+  color: rgb(255 255 255 / 70%);
+  font-size: 11px;
+  min-width: 40px;
+  text-align: right;
+}
+
+:deep(.ft-eq-toggle-small) {
+  width: 32px;
+  height: 18px;
+}
+
+:deep(.ft-eq-toggle-small .ft-eq-toggle-slider::before) {
+  height: 12px;
+  width: 12px;
+}
+
+:deep(.ft-eq-toggle-small input:checked + .ft-eq-toggle-slider::before) {
+  transform: translateX(14px);
+}
+
 /* Mobile styles for equalizer */
 @media only screen and (max-width: 680px) {
   :deep(.ft-equalizer-panel) {

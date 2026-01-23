@@ -870,6 +870,13 @@ Video:
       Treble Boost: 高音增強
       Treble Reducer: 高音減弱
       Vocal: 人聲
+    Audio Effects: 音效處理
+    Mono: 單聲道
+    Stereo Width: 立體聲寬度
+    Reverb: 混響
+    Narrow: 窄
+    Normal: 正常
+    Wide: 寬
     Autoplay is on: 自動播放已開啟
     Autoplay is off: 自動播放已關閉
   IP block: YouTube 已封鎖您的 IP 位址，因此無法觀看影片。請嘗試切換到其他 VPN 或代理伺服器。

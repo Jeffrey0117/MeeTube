@@ -8,7 +8,7 @@ export class EqualizerPanel extends shaka.ui.Element {
    * @param {EventTarget} events
    * @param {HTMLElement} parent
    * @param {shaka.ui.Controls} controls
-   * @param {{ enabled: boolean, presetId: string, bands: number[] }} initialState
+   * @param {{ enabled: boolean, presetId: string, bands: number[], effects?: { mono: boolean, stereoWidth: number, reverb: number } }} initialState
    */
   constructor(events, parent, controls, initialState) {
     super(parent, controls)
@@ -25,6 +25,13 @@ export class EqualizerPanel extends shaka.ui.Element {
     /** @private */
     this.bands_ = [...initialState.bands]
 
+    /** @private - Audio effects state */
+    this.effects_ = {
+      mono: initialState.effects?.mono ?? false,
+      stereoWidth: initialState.effects?.stereoWidth ?? 1,
+      reverb: initialState.effects?.reverb ?? 0
+    }
+
     /** @private */
     this.sliders_ = []
 
@@ -37,6 +44,7 @@ export class EqualizerPanel extends shaka.ui.Element {
     // Create panel content
     this.createHeader_()
     this.createSliders_()
+    this.createEffectsSection_()
     this.createFooter_()
 
     this.parent.appendChild(this.panel_)
@@ -152,6 +160,155 @@ export class EqualizerPanel extends shaka.ui.Element {
     /** @private */
     this.slidersContainer_ = slidersContainer
     this.panel_.appendChild(slidersContainer)
+  }
+
+  /** @private */
+  createEffectsSection_() {
+    const effectsSection = document.createElement('div')
+    effectsSection.classList.add('ft-eq-effects')
+
+    // Section title
+    const title = document.createElement('span')
+    title.classList.add('ft-eq-effects-title')
+    title.textContent = i18n.global.t('Video.Player.Audio Effects')
+    /** @private */
+    this.effectsTitle_ = title
+    effectsSection.appendChild(title)
+
+    // Mono toggle row
+    const monoRow = document.createElement('div')
+    monoRow.classList.add('ft-eq-effect-row')
+
+    const monoLabel = document.createElement('span')
+    monoLabel.classList.add('ft-eq-effect-label')
+    monoLabel.textContent = i18n.global.t('Video.Player.Mono')
+    /** @private */
+    this.monoLabel_ = monoLabel
+    monoRow.appendChild(monoLabel)
+
+    const monoToggle = document.createElement('label')
+    monoToggle.classList.add('ft-eq-toggle', 'ft-eq-toggle-small')
+
+    /** @private */
+    this.monoInput_ = document.createElement('input')
+    this.monoInput_.type = 'checkbox'
+    this.monoInput_.checked = this.effects_.mono
+    monoToggle.appendChild(this.monoInput_)
+
+    const monoSlider = document.createElement('span')
+    monoSlider.classList.add('ft-eq-toggle-slider')
+    monoToggle.appendChild(monoSlider)
+
+    monoRow.appendChild(monoToggle)
+    effectsSection.appendChild(monoRow)
+
+    this.eventManager.listen(this.monoInput_, 'change', () => {
+      this.effects_.mono = this.monoInput_.checked
+      this.emitEffectsChange_()
+    })
+
+    // Stereo Width slider row
+    const stereoRow = document.createElement('div')
+    stereoRow.classList.add('ft-eq-effect-row')
+
+    const stereoLabel = document.createElement('span')
+    stereoLabel.classList.add('ft-eq-effect-label')
+    stereoLabel.textContent = i18n.global.t('Video.Player.Stereo Width')
+    /** @private */
+    this.stereoLabel_ = stereoLabel
+    stereoRow.appendChild(stereoLabel)
+
+    const stereoSliderContainer = document.createElement('div')
+    stereoSliderContainer.classList.add('ft-eq-effect-slider-container')
+
+    /** @private */
+    this.stereoSlider_ = document.createElement('input')
+    this.stereoSlider_.type = 'range'
+    this.stereoSlider_.min = '0'
+    this.stereoSlider_.max = '2'
+    this.stereoSlider_.step = '0.1'
+    this.stereoSlider_.value = this.effects_.stereoWidth
+    this.stereoSlider_.classList.add('ft-eq-effect-slider')
+    stereoSliderContainer.appendChild(this.stereoSlider_)
+
+    /** @private */
+    this.stereoValue_ = document.createElement('span')
+    this.stereoValue_.classList.add('ft-eq-effect-value')
+    this.stereoValue_.textContent = this.formatStereoWidth_(this.effects_.stereoWidth)
+    stereoSliderContainer.appendChild(this.stereoValue_)
+
+    stereoRow.appendChild(stereoSliderContainer)
+    effectsSection.appendChild(stereoRow)
+
+    this.eventManager.listen(this.stereoSlider_, 'input', () => {
+      const value = parseFloat(this.stereoSlider_.value)
+      this.effects_.stereoWidth = value
+      this.stereoValue_.textContent = this.formatStereoWidth_(value)
+      this.emitEffectsChange_()
+    })
+
+    // Reverb slider row
+    const reverbRow = document.createElement('div')
+    reverbRow.classList.add('ft-eq-effect-row')
+
+    const reverbLabel = document.createElement('span')
+    reverbLabel.classList.add('ft-eq-effect-label')
+    reverbLabel.textContent = i18n.global.t('Video.Player.Reverb')
+    /** @private */
+    this.reverbLabel_ = reverbLabel
+    reverbRow.appendChild(reverbLabel)
+
+    const reverbSliderContainer = document.createElement('div')
+    reverbSliderContainer.classList.add('ft-eq-effect-slider-container')
+
+    /** @private */
+    this.reverbSlider_ = document.createElement('input')
+    this.reverbSlider_.type = 'range'
+    this.reverbSlider_.min = '0'
+    this.reverbSlider_.max = '1'
+    this.reverbSlider_.step = '0.05'
+    this.reverbSlider_.value = this.effects_.reverb
+    this.reverbSlider_.classList.add('ft-eq-effect-slider')
+    reverbSliderContainer.appendChild(this.reverbSlider_)
+
+    /** @private */
+    this.reverbValue_ = document.createElement('span')
+    this.reverbValue_.classList.add('ft-eq-effect-value')
+    this.reverbValue_.textContent = this.formatPercentage_(this.effects_.reverb)
+    reverbSliderContainer.appendChild(this.reverbValue_)
+
+    reverbRow.appendChild(reverbSliderContainer)
+    effectsSection.appendChild(reverbRow)
+
+    this.eventManager.listen(this.reverbSlider_, 'input', () => {
+      const value = parseFloat(this.reverbSlider_.value)
+      this.effects_.reverb = value
+      this.reverbValue_.textContent = this.formatPercentage_(value)
+      this.emitEffectsChange_()
+    })
+
+    /** @private */
+    this.effectsSection_ = effectsSection
+    this.panel_.appendChild(effectsSection)
+  }
+
+  /** @private */
+  formatStereoWidth_(value) {
+    if (value < 0.5) return i18n.global.t('Video.Player.Narrow')
+    if (value < 1.2) return i18n.global.t('Video.Player.Normal')
+    return i18n.global.t('Video.Player.Wide')
+  }
+
+  /** @private */
+  formatPercentage_(value) {
+    return `${Math.round(value * 100)}%`
+  }
+
+  /** @private */
+  emitEffectsChange_() {
+    this.events_.dispatchEvent(new CustomEvent('audioEffectsChanged', {
+      detail: { ...this.effects_ }
+    }))
   }
 
   /** @private */
@@ -309,11 +466,29 @@ export class EqualizerPanel extends shaka.ui.Element {
         option.textContent = i18n.global.t(`Video.Player.EQ Presets.${preset.name}`)
       }
     })
+
+    // Update audio effects labels
+    if (this.effectsTitle_) {
+      this.effectsTitle_.textContent = i18n.global.t('Video.Player.Audio Effects')
+    }
+    if (this.monoLabel_) {
+      this.monoLabel_.textContent = i18n.global.t('Video.Player.Mono')
+    }
+    if (this.stereoLabel_) {
+      this.stereoLabel_.textContent = i18n.global.t('Video.Player.Stereo Width')
+    }
+    if (this.reverbLabel_) {
+      this.reverbLabel_.textContent = i18n.global.t('Video.Player.Reverb')
+    }
+    // Update stereo width value display
+    if (this.stereoValue_) {
+      this.stereoValue_.textContent = this.formatStereoWidth_(this.effects_.stereoWidth)
+    }
   }
 
   /**
    * Update panel state from external source
-   * @param {{ enabled: boolean, presetId: string, bands: number[] }} state
+   * @param {{ enabled: boolean, presetId: string, bands: number[], effects?: { mono: boolean, stereoWidth: number, reverb: number } }} state
    */
   updateState(state) {
     this.enabled_ = state.enabled
@@ -323,5 +498,21 @@ export class EqualizerPanel extends shaka.ui.Element {
     this.presetSelect_.value = this.presetId_
     this.updateSliderValues_()
     this.updateSlidersState_()
+
+    // Update effects state if provided
+    if (state.effects) {
+      this.effects_ = { ...state.effects }
+      if (this.monoInput_) {
+        this.monoInput_.checked = this.effects_.mono
+      }
+      if (this.stereoSlider_) {
+        this.stereoSlider_.value = this.effects_.stereoWidth
+        this.stereoValue_.textContent = this.formatStereoWidth_(this.effects_.stereoWidth)
+      }
+      if (this.reverbSlider_) {
+        this.reverbSlider_.value = this.effects_.reverb
+        this.reverbValue_.textContent = this.formatPercentage_(this.effects_.reverb)
+      }
+    }
   }
 }

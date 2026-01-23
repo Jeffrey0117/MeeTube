@@ -24,12 +24,17 @@ import {
   sortCaptions,
   translateSponsorBlockCategory
 } from '../../helpers/player/utils'
-import { applyAudioGain } from '../../helpers/audio-gain'
+import { applyAudioGain, getAudioContext } from '../../helpers/audio-gain'
 import {
   updateEqualizerBands,
   setEqualizerEnabled,
   EQ_PRESETS
 } from '../../helpers/equalizer'
+import {
+  setMonoMode,
+  setStereoWidth,
+  setReverbAmount
+} from '../../helpers/audio-effects'
 import {
   addKeyboardShortcutToActionTitle,
   showToast,
@@ -1982,10 +1987,23 @@ export default defineComponent({
         eqBands = EQ_PRESETS[eqPresetId].gains
       }
 
+      // Get audio effects settings from store
+      const effectsMono = store.getters.getAudioEffectsMono ?? false
+      const effectsStereoWidth = store.getters.getAudioEffectsStereoWidth ?? 1
+      const effectsReverb = store.getters.getAudioEffectsReverb ?? 0
+
       // Apply initial EQ settings to the audio
       if (video.value) {
         updateEqualizerBands(video.value, eqBands)
         setEqualizerEnabled(video.value, eqEnabled)
+
+        // Apply initial audio effects
+        const audioInfo = getAudioContext(video.value)
+        if (audioInfo && audioInfo.effects) {
+          setMonoMode(audioInfo.effects, effectsMono)
+          setStereoWidth(audioInfo.effects, effectsStereoWidth)
+          setReverbAmount(audioInfo.effects, effectsReverb)
+        }
       }
 
       // Handle EQ state changes
@@ -2022,6 +2040,25 @@ export default defineComponent({
         store.dispatch('updateEqualizerCustomBands', JSON.stringify(bands))
       })
 
+      // Handle audio effects changes
+      events.addEventListener('audioEffectsChanged', (/** @type {CustomEvent} */ event) => {
+        const { mono, stereoWidth, reverb } = event.detail
+
+        if (video.value) {
+          const audioInfo = getAudioContext(video.value)
+          if (audioInfo && audioInfo.effects) {
+            setMonoMode(audioInfo.effects, mono)
+            setStereoWidth(audioInfo.effects, stereoWidth)
+            setReverbAmount(audioInfo.effects, reverb)
+          }
+        }
+
+        // Save to store
+        store.dispatch('updateAudioEffectsMono', mono)
+        store.dispatch('updateAudioEffectsStereoWidth', stereoWidth)
+        store.dispatch('updateAudioEffectsReverb', reverb)
+      })
+
       // Button factory
       class EqualizerButtonFactory {
         create(rootElement, controls) {
@@ -2038,7 +2075,12 @@ export default defineComponent({
           equalizerPanel = new EqualizerPanel(events, rootElement, controls, {
             enabled: eqEnabled,
             presetId: eqPresetId,
-            bands: eqBands
+            bands: eqBands,
+            effects: {
+              mono: effectsMono,
+              stereoWidth: effectsStereoWidth,
+              reverb: effectsReverb
+            }
           })
           return equalizerPanel
         }
