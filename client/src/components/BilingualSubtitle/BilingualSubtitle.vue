@@ -6,6 +6,21 @@
     :class="{ 'mobile-mode': isMobile }"
     :style="overlayStyle"
   >
+    <!-- Drag Handle -->
+    <div
+      class="drag-handle"
+      @mousedown="onDragStart"
+      @touchstart.prevent="onTouchStart"
+      @mouseenter="showHandle = true"
+      @mouseleave="onHandleLeave"
+      :class="{ 'handle-visible': showHandle || isDragging }"
+    >
+      <svg width="20" height="8" viewBox="0 0 20 8" fill="currentColor">
+        <rect x="0" y="0" width="20" height="2" rx="1" />
+        <rect x="0" y="6" width="20" height="2" rx="1" />
+      </svg>
+    </div>
+
     <!-- Subtitle Content -->
     <div class="subtitle-content" :style="contentStyle">
       <!-- Translation (above) -->
@@ -175,6 +190,7 @@ export default defineComponent({
       overlayRef,
       topPercent,
       showHandle,
+      isDragging,
       showTranslation,
       isMobile,
       overlayStyle,
@@ -199,6 +215,31 @@ export default defineComponent({
   align-items: center;
   pointer-events: none;
   z-index: 100;
+}
+
+/* Drag Handle */
+.drag-handle {
+  padding: 6px 12px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  cursor: grab;
+  color: rgba(255, 255, 255, 0.3);
+  background-color: transparent;
+  transition: all 0.2s ease;
+  pointer-events: auto;
+  opacity: 0;
+}
+
+.drag-handle:hover,
+.drag-handle.handle-visible {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: #ffeb3b;
 }
 
 .subtitle-content {
@@ -251,6 +292,12 @@ export default defineComponent({
 
 .mobile-mode .subtitle-translation {
   font-size: 14px;
+}
+
+/* Mobile: always show drag handle for touch */
+.mobile-mode .drag-handle {
+  opacity: 0.6;
+  padding: 8px 16px;
 }
 
 /* Tablet */
