@@ -140,17 +140,17 @@
           </div>
         </div>
       </Transition>
+      <!-- Bilingual Subtitle Overlay -->
+      <BilingualSubtitle
+        v-if="bilingualMode"
+        :current-subtitle="currentBilingualSubtitle"
+        :display-mode="bilingualDisplayMode"
+        :visible="bilingualVisible"
+        :container-ref="container"
+        :font-size="20"
+        :background-opacity="75"
+      />
     </div>
-    <!-- Bilingual Subtitle - Outside video container for proper mobile layout -->
-    <BilingualSubtitle
-      v-if="bilingualMode"
-      :current-subtitle="currentBilingualSubtitle"
-      :display-mode="bilingualDisplayMode"
-      :visible="bilingualVisible"
-      :container-ref="container"
-      :font-size="20"
-      :background-opacity="75"
-    />
   </div>
 </template>
 

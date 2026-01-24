@@ -3,24 +3,9 @@
     v-if="visible && currentSubtitle"
     ref="overlayRef"
     class="bilingual-subtitle-overlay"
-    :class="{ 'mobile-mode': isMobilePortrait }"
-    :style="!isMobilePortrait ? overlayStyle : {}"
+    :class="{ 'mobile-mode': isMobile }"
+    :style="overlayStyle"
   >
-    <!-- Drag Handle (desktop only) -->
-    <div
-      v-if="!isMobilePortrait"
-      class="drag-handle"
-      @mousedown="onDragStart"
-      @touchstart.prevent="onTouchStart"
-      @mouseenter="showHandle = true"
-      @mouseleave="onHandleLeave"
-      :style="{ opacity: showHandle ? 1 : 0 }"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-        <path d="M8 6h8M8 12h8M8 18h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-      </svg>
-    </div>
-
     <!-- Subtitle Content -->
     <div class="subtitle-content" :style="contentStyle">
       <!-- Translation (above) -->
@@ -81,17 +66,16 @@ export default defineComponent({
   },
   setup(props) {
     const overlayRef = ref(null)
-    const topPercent = ref(70)
+    const topPercent = ref(75) // Position at 75% from top (near bottom)
     const showHandle = ref(false)
     const isDragging = ref(false)
     const startY = ref(0)
     const startPercent = ref(0)
     const windowWidth = ref(window.innerWidth)
-    const isPortrait = ref(window.innerHeight > window.innerWidth)
 
-    // Mobile portrait detection (< 680px width AND portrait orientation)
-    const isMobilePortrait = computed(() => {
-      return windowWidth.value <= 680 && isPortrait.value
+    // Mobile detection (< 680px width)
+    const isMobile = computed(() => {
+      return windowWidth.value <= 680
     })
 
     // Show translation only if we have it
@@ -169,7 +153,6 @@ export default defineComponent({
     // Window resize handler
     const onResize = () => {
       windowWidth.value = window.innerWidth
-      isPortrait.value = window.innerHeight > window.innerWidth
     }
 
     onMounted(() => {
@@ -193,7 +176,7 @@ export default defineComponent({
       topPercent,
       showHandle,
       showTranslation,
-      isMobilePortrait,
+      isMobile,
       overlayStyle,
       contentStyle,
       onDragStart,
@@ -205,7 +188,7 @@ export default defineComponent({
 </script>
 
 <style scoped>
-/* Desktop/Landscape: Overlay on video (absolute positioning) */
+/* Always overlay on video */
 .bilingual-subtitle-overlay {
   position: absolute;
   left: 0;
@@ -218,104 +201,63 @@ export default defineComponent({
   z-index: 100;
 }
 
-/* Mobile portrait mode - below video (relative positioning) */
-.bilingual-subtitle-overlay.mobile-mode {
-  position: relative;
-  top: auto !important;
-  padding: 12px 8px;
-  background-color: var(--bg-color, #0f0f0f);
-  min-height: 60px;
-}
-
-.drag-handle {
-  margin-bottom: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: grab;
-  background-color: rgba(0, 0, 0, 0.75);
-  transition: opacity 0.2s;
-  pointer-events: auto;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
 .subtitle-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-width: 80%;
-  padding: 8px 16px;
+  gap: 4px;
+  max-width: 90%;
+  padding: 6px 12px;
   border-radius: 4px;
   text-align: center;
-  pointer-events: auto;
 }
 
 .subtitle-original {
   color: #ffffff;
   font-weight: 400;
-  line-height: 1.4;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  font-size: 18px;
+  line-height: 1.3;
+  text-shadow:
+    1px 1px 2px rgba(0, 0, 0, 0.9),
+    -1px -1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .subtitle-translation {
   color: #ffeb3b;
   font-weight: 500;
-  line-height: 1.4;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  line-height: 1.3;
+  text-shadow:
+    1px 1px 2px rgba(0, 0, 0, 0.9),
+    -1px -1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Desktop: larger text */
+.subtitle-original {
   font-size: 18px;
 }
 
-/* Mobile portrait - outside video, cleaner look */
+.subtitle-translation {
+  font-size: 18px;
+}
+
+/* Mobile: smaller, compact text */
 .mobile-mode .subtitle-content {
-  max-width: 100%;
-  padding: 8px 16px;
-  border-radius: 0;
-  background-color: transparent !important;
+  max-width: 95%;
+  padding: 4px 8px;
+  gap: 2px;
 }
 
 .mobile-mode .subtitle-original {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: none;
-  font-weight: 400;
+  font-size: 13px;
 }
 
 .mobile-mode .subtitle-translation {
-  font-size: 16px;
-  color: #ffeb3b;
-  text-shadow: none;
-  font-weight: 500;
-}
-
-/* Mobile landscape - overlay on video */
-@media only screen and (max-width: 900px) and (orientation: landscape) {
-  .subtitle-content {
-    max-width: 90%;
-    padding: 6px 12px;
-  }
-
-  .subtitle-original,
-  .subtitle-translation {
-    font-size: 16px;
-  }
+  font-size: 14px;
 }
 
 /* Tablet */
 @media only screen and (min-width: 681px) and (max-width: 1024px) {
   .subtitle-original,
   .subtitle-translation {
-    font-size: 17px;
-  }
-}
-
-/* Desktop */
-@media only screen and (min-width: 1025px) {
-  .subtitle-original,
-  .subtitle-translation {
-    font-size: 20px;
+    font-size: 16px;
   }
 }
 </style>
