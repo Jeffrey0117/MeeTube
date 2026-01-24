@@ -436,26 +436,45 @@
   }
 }
 
-/* Mobile: 50vh height like FreeTube */
+/* Mobile: prevent video cropping - responsive width-based sizing */
 @media screen and (max-width: 639px) {
   .ftVideoPlayer {
     width: 100% !important;
-    height: 50vh !important;
-    min-height: 220px !important;
-    max-width: 100% !important;
+    max-width: 100vw !important;
+    /* Let content determine height within aspect-ratio constraint */
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
+    /* Allow video to show without clipping on mobile */
+    overflow: visible !important;
   }
 
+  /* Keep 16:9 aspect ratio for proper sizing */
   .ftVideoPlayer.sixteenByNine {
-    aspect-ratio: unset !important;
+    aspect-ratio: 16 / 9 !important;
     width: 100% !important;
-    height: 50vh !important;
-    min-height: 220px !important;
+    height: auto !important;
   }
 
-  .player {
+  /* Ensure video fills container without cropping */
+  :deep(.player),
+  .player,
+  video.player {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important; /* Prevent cropping, maintain aspect ratio */
+    object-fit: contain !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Global fallback for mobile video - ensures no cropping */
+:global(.ftVideoPlayer video) {
+  max-width: 100%;
+}
+
+@media screen and (max-width: 639px) {
+  :global(.ftVideoPlayer video) {
+    object-fit: contain !important;
   }
 }
 

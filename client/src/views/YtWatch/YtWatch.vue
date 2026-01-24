@@ -310,12 +310,17 @@ export default {
         }
 
         // Captions
+        console.log('[YtWatch] result.captions:', result.captions)
         if (result.captions?.length > 0) {
           this.captions = result.captions.map(track => ({
             url: track.url,
             label: track.label,
-            language_code: track.languageCode || track.language_code
+            language: track.languageCode || track.language_code,
+            mimeType: 'text/vtt'
           }))
+          console.log('[YtWatch] Mapped captions:', this.captions)
+        } else {
+          console.log('[YtWatch] No captions available')
         }
 
         // Related videos
@@ -844,7 +849,7 @@ export default {
   .yt-video-player :deep(video.player) {
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important;
+    object-fit: contain !important; /* contain to prevent cropping */
   }
 
   .yt-video-info {

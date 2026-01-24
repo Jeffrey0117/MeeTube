@@ -158,3 +158,19 @@
 
 <style src="shaka-player/dist/controls.css" />
 <style scoped src="./ft-shaka-video-player.css" />
+
+<!-- Unscoped mobile video fix - ensures no cropping regardless of Shaka manipulation -->
+<style>
+@media screen and (max-width: 639px) {
+  .ftVideoPlayer {
+    overflow: visible !important;
+  }
+  .ftVideoPlayer video.player,
+  .ftVideoPlayer video,
+  .shaka-video-container video {
+    object-fit: contain !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+</style>
