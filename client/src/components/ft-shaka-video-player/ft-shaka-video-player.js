@@ -873,11 +873,10 @@ export default defineComponent({
         textTrackLabelFormat: sortedCaptions.length > 0 ? TrackLabelFormat.LABEL : TrackLabelFormat.LANGUAGE,
         displayInVrMode: useVrMode.value,
 
-        // Disable single click play/pause on mobile to prevent accidental triggers
-        // when trying to tap control buttons
-        singleClickForPlayAndPause: !onlyUseOverFlowMenu.value,
-        // Double click for fullscreen only on desktop
-        doubleClickForFullscreen: !onlyUseOverFlowMenu.value
+        // Keep click-to-play enabled for all devices
+        singleClickForPlayAndPause: true,
+        // Double click for fullscreen on all devices
+        doubleClickForFullscreen: true
       }
 
       /** @type {string[]} */
