@@ -727,4 +727,13 @@
   }
 }
 
+/* Bilingual Subtitle Button */
+:deep(.bilingual-button.bilingual-active) {
+  color: var(--primary-color, #f00) !important;
+}
+
+:deep(.bilingual-button.bilingual-active svg path) {
+  fill: var(--primary-color, #f00) !important;
+}
+
 /* stylelint-enable liberty/use-logical-spec */

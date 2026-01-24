@@ -15,6 +15,7 @@ import { AutoplayToggle } from './player-components/AutoplayToggle'
 import { SkipButton } from './player-components/SkipButton'
 import { EqualizerButton } from './player-components/EqualizerButton'
 import { EqualizerPanel } from './player-components/EqualizerPanel'
+import { BilingualButton } from './player-components/BilingualButton'
 import {
   deduplicateAudioTracks,
   findMostSimilarAudioBandwidth,
@@ -42,6 +43,14 @@ import {
   throttle,
   removeFromArrayIfExists,
 } from '../../helpers/utils'
+import {
+  parseVTT,
+  fetchVTT,
+  translateSubtitles,
+  findSubtitleAtTime,
+  createSubtitleSync,
+} from '../../helpers/bilingual-subtitle'
+import BilingualSubtitle from '../BilingualSubtitle/BilingualSubtitle.vue'
 
 /** @typedef {import('../../helpers/sponsorblock').SponsorBlockCategory} SponsorBlockCategory */
 
@@ -76,6 +85,9 @@ const LOCALE_MAPPINGS = new Map(process.env.SHAKA_LOCALE_MAPPINGS)
 
 export default defineComponent({
   name: 'FtShakaVideoPlayer',
+  components: {
+    BilingualSubtitle
+  },
   props: {
     format: {
       type: String,
@@ -240,6 +252,17 @@ export default defineComponent({
     if (store.getters.getEnableSubtitlesByDefault && sortedCaptions.length > 0) {
       restoreCaptionIndex = 0
     }
+
+    // ============================================
+    // Bilingual Subtitle State
+    // ============================================
+    const bilingualMode = ref(false)
+    const bilingualVisible = ref(true)
+    const bilingualDisplayMode = ref('bilingual') // 'bilingual' | 'originalOnly' | 'translationOnly'
+    const currentBilingualSubtitle = ref(null)
+    const bilingualSubtitles = ref([])
+    const isTranslatingSubtitles = ref(false)
+    let bilingualSyncController = null
 
     const showStats = ref(false)
     const stats = reactive({
@@ -860,6 +883,7 @@ export default defineComponent({
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
           'playback_rate',
           'captions',
+          'ft_bilingual',
           'ft_audio_tracks',
           'ft_equalizer',
           'loop',
@@ -877,6 +901,7 @@ export default defineComponent({
         uiConfig.controlPanelElements.push(
           'ft_screenshot',
           'captions',
+          'ft_bilingual',
           'ft_equalizer',
           'loop',
           'ft_autoplay_toggle',
@@ -2171,6 +2196,33 @@ export default defineComponent({
       }
     }
 
+    function registerBilingualButton() {
+      // Handle toggle bilingual mode
+      events.addEventListener('toggleBilingualMode', async () => {
+        console.log('[BILINGUAL] Toggle event received')
+        await toggleBilingualMode()
+        events.dispatchEvent(new CustomEvent('bilingualStateChanged', {
+          detail: { enabled: bilingualMode.value }
+        }))
+      })
+
+      // Handle cycle display mode
+      events.addEventListener('cycleBilingualDisplayMode', () => {
+        console.log('[BILINGUAL] Cycle display mode event received')
+        cycleBilingualDisplayMode()
+      })
+
+      // Button factory
+      class BilingualButtonFactory {
+        create(rootElement, controls) {
+          return new BilingualButton(bilingualMode.value, events, rootElement, controls)
+        }
+      }
+
+      shakaControls.registerElement('ft_bilingual', new BilingualButtonFactory())
+      shakaOverflowMenu.registerElement('ft_bilingual', new BilingualButtonFactory())
+    }
+
     /**
      * As shaka-player doesn't let you unregister custom control factories,
      * overwrite them with `null` instead so the referenced objects
@@ -2206,6 +2258,9 @@ export default defineComponent({
       shakaControls.registerElement('ft_equalizer', null)
       shakaOverflowMenu.registerElement('ft_equalizer', null)
       equalizerPanel = null
+
+      shakaControls.registerElement('ft_bilingual', null)
+      shakaOverflowMenu.registerElement('ft_bilingual', null)
     }
 
     // #endregion custom player controls
@@ -3003,6 +3058,7 @@ export default defineComponent({
       registerStatsButton()
       registerSkipButtons()
       registerEqualizerButton()
+      registerBilingualButton()
 
       if (ui.isMobile()) {
         onlyUseOverFlowMenu.value = true
@@ -3594,6 +3650,153 @@ export default defineComponent({
       showOverlayControls()
     }
 
+    // ============================================
+    // Bilingual Subtitle Functions
+    // ============================================
+
+    /**
+     * Enable bilingual subtitle mode
+     * @param {string} captionUrl - URL of the caption file
+     */
+    async function enableBilingualMode(captionUrl) {
+      if (!captionUrl || !video.value) return
+
+      try {
+        isTranslatingSubtitles.value = true
+        showToast('正在載入雙語字幕...', 2000)
+
+        // Fetch and parse VTT
+        const vttContent = await fetchVTT(captionUrl)
+        const parsedSubtitles = parseVTT(vttContent)
+
+        if (parsedSubtitles.length === 0) {
+          showToast('無法解析字幕', 3000)
+          isTranslatingSubtitles.value = false
+          return
+        }
+
+        console.log(`[BILINGUAL] Parsed ${parsedSubtitles.length} subtitles`)
+
+        // Translate subtitles
+        showToast('正在翻譯字幕...', 3000)
+        const translatedSubtitles = await translateSubtitles(
+          parsedSubtitles,
+          'zh-TW',
+          (current, total) => {
+            console.log(`[BILINGUAL] Translating: ${current}/${total}`)
+          }
+        )
+
+        bilingualSubtitles.value = translatedSubtitles
+        console.log(`[BILINGUAL] Translation complete`)
+
+        // Start sync controller
+        if (bilingualSyncController) {
+          bilingualSyncController.stop()
+        }
+
+        bilingualSyncController = createSubtitleSync(
+          video.value,
+          translatedSubtitles,
+          (subtitle) => {
+            currentBilingualSubtitle.value = subtitle
+          }
+        )
+        bilingualSyncController.start()
+
+        // Disable Shaka native subtitles
+        if (player) {
+          player.setTextTrackVisibility(false)
+        }
+
+        bilingualMode.value = true
+        bilingualVisible.value = true
+        isTranslatingSubtitles.value = false
+
+        showToast('雙語字幕已啟用', 2000)
+      } catch (error) {
+        console.error('[BILINGUAL] Error:', error)
+        showToast('載入雙語字幕失敗', 3000)
+        isTranslatingSubtitles.value = false
+      }
+    }
+
+    /**
+     * Disable bilingual subtitle mode
+     */
+    function disableBilingualMode() {
+      bilingualMode.value = false
+      currentBilingualSubtitle.value = null
+
+      if (bilingualSyncController) {
+        bilingualSyncController.stop()
+        bilingualSyncController = null
+      }
+
+      // Re-enable Shaka native subtitles if there was one active
+      if (player && player.getTextTracks().length > 0) {
+        player.setTextTrackVisibility(true)
+      }
+
+      showToast('雙語字幕已關閉', 2000)
+    }
+
+    /**
+     * Toggle bilingual mode
+     */
+    async function toggleBilingualMode() {
+      if (bilingualMode.value) {
+        disableBilingualMode()
+      } else {
+        // Find the currently selected or first English caption
+        const textTracks = player?.getTextTracks() || []
+        const activeTrack = textTracks.find(t => t.active)
+        const enTrack = textTracks.find(t => t.language?.startsWith('en'))
+        const track = activeTrack || enTrack || textTracks[0]
+
+        if (!track) {
+          showToast('沒有可用的字幕', 3000)
+          return
+        }
+
+        // Find the caption URL from sortedCaptions
+        const caption = sortedCaptions.find(c =>
+          c.language === track.language || c.label === track.label
+        )
+
+        if (caption?.url) {
+          await enableBilingualMode(caption.url)
+        } else {
+          showToast('無法取得字幕 URL', 3000)
+        }
+      }
+    }
+
+    /**
+     * Cycle through display modes
+     */
+    function cycleBilingualDisplayMode() {
+      const modes = ['bilingual', 'originalOnly', 'translationOnly']
+      const currentIndex = modes.indexOf(bilingualDisplayMode.value)
+      const nextIndex = (currentIndex + 1) % modes.length
+      bilingualDisplayMode.value = modes[nextIndex]
+
+      const modeNames = {
+        bilingual: '雙語',
+        originalOnly: '僅原文',
+        translationOnly: '僅翻譯'
+      }
+      showToast(`字幕模式: ${modeNames[bilingualDisplayMode.value]}`, 2000)
+    }
+
+    // Expose bilingual functions
+    expose({
+      enableBilingualMode,
+      disableBilingualMode,
+      toggleBilingualMode,
+      cycleBilingualDisplayMode,
+    })
+
     return {
       container,
       video,
@@ -3627,6 +3830,13 @@ export default defineComponent({
       valueChangeIcon,
       showValueChangePopup,
       invertValueChangeContentOrder,
+
+      // Bilingual Subtitles
+      bilingualMode,
+      bilingualVisible,
+      bilingualDisplayMode,
+      currentBilingualSubtitle,
+      isTranslatingSubtitles,
     }
   }
 })

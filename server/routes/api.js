@@ -883,6 +883,158 @@ router.get('/caption-cache/stats', (req, res) => {
   res.json(captionCache.getStats())
 })
 
+// ============================================
+// Translation API (Google Translate)
+// ============================================
+
+// Translation cache (LRU)
+class TranslationCache {
+  constructor(maxSize = 2000, ttlMs = 7 * 24 * 60 * 60 * 1000) { // 7 days
+    this.maxSize = maxSize
+    this.ttlMs = ttlMs
+    this.cache = new Map()
+  }
+
+  _makeKey(text, targetLang) {
+    return `${targetLang}:${text.substring(0, 100)}`
+  }
+
+  get(text, targetLang) {
+    const key = this._makeKey(text, targetLang)
+    const entry = this.cache.get(key)
+    if (!entry || Date.now() > entry.expiresAt) {
+      if (entry) this.cache.delete(key)
+      return null
+    }
+    // Move to end (LRU)
+    this.cache.delete(key)
+    this.cache.set(key, entry)
+    return entry.data
+  }
+
+  set(text, targetLang, translation) {
+    const key = this._makeKey(text, targetLang)
+    if (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value
+      this.cache.delete(oldestKey)
+    }
+    this.cache.set(key, {
+      data: translation,
+      expiresAt: Date.now() + this.ttlMs
+    })
+  }
+
+  getStats() {
+    return { size: this.cache.size, maxSize: this.maxSize }
+  }
+}
+
+const translationCache = new TranslationCache()
+
+/**
+ * Google Translate (免費、無需 API Key)
+ */
+async function googleTranslate(text, targetLang = 'zh-TW') {
+  const cleanText = text.replace(/\u200B/g, '').trim()
+  if (!cleanText) return ''
+
+  // Check cache
+  const cached = translationCache.get(cleanText, targetLang)
+  if (cached) {
+    console.log(`[TRANSLATE] Cache HIT: "${cleanText.substring(0, 30)}..."`)
+    return cached
+  }
+
+  const params = new URLSearchParams({
+    client: 'gtx',
+    sl: 'en',
+    tl: targetLang,
+    dt: 't',
+    strip: '1',
+    nonced: '1',
+    q: cleanText,
+  })
+
+  const resp = await fetch(
+    `https://translate.googleapis.com/translate_a/single?${params}`
+  )
+
+  if (!resp.ok) {
+    throw new Error(`Google Translate failed: ${resp.status}`)
+  }
+
+  const result = await resp.json()
+  const translation = result[0]
+    .filter(Array.isArray)
+    .map(chunk => chunk[0])
+    .filter(Boolean)
+    .join('')
+
+  // Cache result
+  translationCache.set(cleanText, targetLang, translation)
+  console.log(`[TRANSLATE] Translated: "${cleanText.substring(0, 30)}..." => "${translation.substring(0, 30)}..."`)
+
+  return translation
+}
+
+/**
+ * 批次翻譯 (多句一次處理)
+ */
+async function batchTranslate(texts, targetLang = 'zh-TW') {
+  const separator = '\n[SEP]\n'
+  const combined = texts.join(separator)
+  const translated = await googleTranslate(combined, targetLang)
+  return translated.split('[SEP]').map(t => t.trim())
+}
+
+// Single text translation
+router.post('/translate', async (req, res) => {
+  try {
+    const { text, targetLang = 'zh-TW' } = req.body
+
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' })
+    }
+
+    const translation = await googleTranslate(text, targetLang)
+    res.json({ translation })
+  } catch (error) {
+    console.error('[TRANSLATE]', error.message)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Batch translation (for subtitles)
+router.post('/translate/batch', async (req, res) => {
+  try {
+    const { texts, targetLang = 'zh-TW' } = req.body
+
+    if (!texts || !Array.isArray(texts)) {
+      return res.status(400).json({ error: 'Texts array is required' })
+    }
+
+    if (texts.length === 0) {
+      return res.json({ translations: [] })
+    }
+
+    // Limit batch size
+    if (texts.length > 50) {
+      return res.status(400).json({ error: 'Max 50 texts per batch' })
+    }
+
+    const translations = await batchTranslate(texts, targetLang)
+    res.json({ translations })
+  } catch (error) {
+    console.error('[TRANSLATE BATCH]', error.message)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Translation cache stats
+router.get('/translate/stats', (req, res) => {
+  res.json(translationCache.getStats())
+})
+
 // === Helper Functions ===
 
 function generateDashManifest(videoId, adaptiveFormats, duration, baseUrl = '') {

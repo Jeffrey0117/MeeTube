@@ -138,6 +138,16 @@
         </div>
       </div>
     </Transition>
+    <!-- Bilingual Subtitle Overlay -->
+    <BilingualSubtitle
+      v-if="bilingualMode"
+      :current-subtitle="currentBilingualSubtitle"
+      :display-mode="bilingualDisplayMode"
+      :visible="bilingualVisible"
+      :container-ref="container"
+      :font-size="20"
+      :background-opacity="75"
+    />
   </div>
 </template>
 
