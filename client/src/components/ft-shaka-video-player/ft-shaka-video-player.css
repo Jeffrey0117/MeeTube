@@ -230,10 +230,25 @@
   padding: 0;
 }
 
+/* Subtitle/Caption Styling */
+:deep(.shaka-text-container) {
+  /* Move captions up from bottom (away from controls) */
+  bottom: 60px !important;
+  /* Larger font size for better readability */
+  font-size: 1.4em !important;
+}
+
+:deep(.shaka-text-container span) {
+  /* Better subtitle background */
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  padding: 4px 8px !important;
+}
+
 @media only screen and (width <=400px) {
   :deep(.shaka-text-container) {
     /* make subtitles take up slightly less space when a mobile phone is in portrait orientation */
     font-size: 16px !important;
+    bottom: 50px !important;
   }
 }
 
