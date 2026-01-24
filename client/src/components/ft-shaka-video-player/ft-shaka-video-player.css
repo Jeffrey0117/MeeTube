@@ -1,4 +1,13 @@
 /* stylelint-disable liberty/use-logical-spec */
+
+/* Wrapper for video + subtitle layout */
+.player-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .ftVideoPlayer {
   display: flex;
   position: relative;
