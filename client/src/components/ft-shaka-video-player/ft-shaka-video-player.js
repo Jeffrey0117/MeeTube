@@ -876,7 +876,9 @@ export default defineComponent({
       } else {
         uiConfig.controlPanelElements.push(
           'ft_screenshot',
+          'captions',
           'ft_equalizer',
+          'loop',
           'ft_autoplay_toggle',
           'overflow_menu',
           'picture_in_picture',
@@ -887,11 +889,8 @@ export default defineComponent({
 
         uiConfig.overflowMenuButtons.push(
           'ft_audio_tracks',
-          'captions',
           'playback_rate',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
-          'ft_equalizer',
-          'loop',
           'recenter_vr',
           'toggle_stereoscopic',
         )
@@ -3105,66 +3104,30 @@ export default defineComponent({
       // getAudioTracks() returns an empty array when no variant is active, so we can't do this in the `streaming` event
       hasMultipleAudioTracks.value = deduplicateAudioTracks(player.getAudioTracks()).size > 1
 
+      console.log('[ShakaPlayer] handleLoaded - sortedCaptions:', sortedCaptions)
+
       const promises = []
 
       for (const caption of sortedCaptions) {
-        if (props.format === 'legacy') {
-          const url = new URL(caption.url)
+        console.log('[ShakaPlayer] Adding caption track:', caption.url, caption.language, caption.label)
 
-          if (url.hostname.endsWith('.youtube.com') && url.pathname === '/api/timedtext' &&
-            url.searchParams.get('caps') === 'asr' && url.searchParams.get('kind') === 'asr' && url.searchParams.get('fmt') === 'vtt') {
-            promises.push((async () => {
-              try {
-                const response = await fetch(caption.url)
-                let text = await response.text()
-
-                // position:0% for LTR text and position:100% for RTL text
-                text = text.replaceAll(/ align:start position:(?:10)?0%$/gm, '')
-
-                const url = `data:${caption.mimeType};charset=utf-8,${encodeURIComponent(text)}`
-
-                await player.addTextTrackAsync(
-                  url,
-                  caption.language,
-                  'captions',
-                  caption.mimeType,
-                  undefined, // codec, only needed if the captions are inside a container (e.g. mp4)
-                  caption.label
-                )
-              } catch (error) {
-                if (error instanceof shaka.util.Error) {
-                  handleError(error, 'addTextTrackAsync', caption)
-                } else {
-                  console.error(error)
-                }
-              }
-            })())
-          } else {
-            promises.push(
-              player.addTextTrackAsync(
-                caption.url,
-                caption.language,
-                'captions',
-                caption.mimeType,
-                undefined, // codec, only needed if the captions are inside a container (e.g. mp4)
-                caption.label
-              )
-                .catch(error => handleError(error, 'addTextTrackAsync', caption))
-            )
-          }
-        } else {
-          promises.push(
-            player.addTextTrackAsync(
+        // Load caption from our proxy
+        promises.push((async () => {
+          try {
+            await player.addTextTrackAsync(
               caption.url,
               caption.language,
               'captions',
               caption.mimeType,
-              undefined, // codec, only needed if the captions are inside a container (e.g. mp4)
+              undefined,
               caption.label
             )
-              .catch(error => handleError(error, 'addTextTrackAsync', caption))
-          )
-        }
+            console.log('[ShakaPlayer] Caption loaded successfully:', caption.language)
+          } catch (error) {
+            console.error('[ShakaPlayer] Caption load error:', error)
+            handleError(error, 'addTextTrackAsync', caption)
+          }
+        })())
       }
 
       if (!isLive.value && props.storyboardSrc) {
