@@ -184,6 +184,14 @@
           :icon="['fas', 'file-image']"
           @change="handleUpdateScreenshotFormat"
         />
+        <FtSelect
+          placeholder="截圖行為"
+          :value="screenshotAction"
+          :select-names="SCREENSHOT_ACTION_NAMES"
+          :select-values="SCREENSHOT_ACTION_VALUES"
+          :icon="['fas', 'camera']"
+          @change="updateScreenshotAction"
+        />
         <FtSlider
           :label="t('Settings.Player Settings.Screenshot.Quality Label')"
           :default-value="screenshotQuality"
@@ -577,6 +585,19 @@ function updateEnableScreenshot(value) {
 
 const SCREENSHOT_FORMAT_NAMES = ['PNG', 'JPEG', 'WebP']
 const SCREENSHOT_FORMAT_VALUES = ['png', 'jpeg', 'webp']
+
+const SCREENSHOT_ACTION_NAMES = ['存檔', '複製到剪貼簿', '兩者都做']
+const SCREENSHOT_ACTION_VALUES = ['file', 'clipboard', 'both']
+
+/** @type {import('vue').ComputedRef<'file' | 'clipboard' | 'both'>} */
+const screenshotAction = computed(() => store.getters.getScreenshotAction)
+
+/**
+ * @param {'file' | 'clipboard' | 'both'} value
+ */
+function updateScreenshotAction(value) {
+  store.dispatch('updateScreenshotAction', value)
+}
 
 /** @type {import('vue').ComputedRef<'png' | 'jpeg' | 'webp'>} */
 const screenshotFormat = computed(() => store.getters.getScreenshotFormat)

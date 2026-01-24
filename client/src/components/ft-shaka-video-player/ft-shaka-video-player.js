@@ -387,6 +387,11 @@ export default defineComponent({
       return store.getters.getScreenshotAskPath
     })
 
+    /** @type {import('vue').ComputedRef<'file' | 'clipboard' | 'both'>} */
+    const screenshotAction = computed(() => {
+      return store.getters.getScreenshotAction
+    })
+
     /** @type {import('vue').ComputedRef<boolean>} */
     const videoVolumeMouseScroll = computed(() => {
       return store.getters.getVideoVolumeMouseScroll
@@ -1692,6 +1697,51 @@ export default defineComponent({
 
     // #region screenshots
 
+    /**
+     * Copy blob to clipboard
+     * @param {Blob} blob
+     * @param {string} mimeType
+     */
+    async function copyToClipboard(blob, mimeType) {
+      try {
+        // ClipboardItem requires specific MIME types
+        // PNG is widely supported, JPEG/WebP may need conversion
+        const clipboardMimeType = mimeType === 'image/png' ? 'image/png' : 'image/png'
+
+        // Convert to PNG for clipboard if not already PNG (better compatibility)
+        let clipboardBlob = blob
+        if (mimeType !== 'image/png') {
+          const canvas = document.createElement('canvas')
+          const img = new Image()
+          const url = URL.createObjectURL(blob)
+
+          await new Promise((resolve, reject) => {
+            img.onload = resolve
+            img.onerror = reject
+            img.src = url
+          })
+
+          canvas.width = img.width
+          canvas.height = img.height
+          canvas.getContext('2d').drawImage(img, 0, 0)
+          URL.revokeObjectURL(url)
+
+          clipboardBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+          canvas.remove()
+        }
+
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [clipboardMimeType]: clipboardBlob
+          })
+        ])
+        return true
+      } catch (error) {
+        console.error('Failed to copy to clipboard:', error)
+        return false
+      }
+    }
+
     async function takeScreenshot() {
       const video_ = video.value
 
@@ -1713,6 +1763,7 @@ export default defineComponent({
       const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`
       // imageQuality is ignored for pngs, so it is still okay to pass the quality value
       const imageQuality = screenshotQuality.value / 100
+      const action = screenshotAction.value
 
       let filename
       try {
@@ -1731,7 +1782,10 @@ export default defineComponent({
       const filenameWithExtension = `${filename}.${format}`
 
       const wasPlaying = !video_.paused
-      if ((!process.env.IS_ELECTRON || screenshotAskPath.value) && wasPlaying) {
+      const shouldPauseForFilePicker = (action === 'file' || action === 'both') &&
+        (!process.env.IS_ELECTRON || screenshotAskPath.value)
+
+      if (shouldPauseForFilePicker && wasPlaying) {
         video_.pause()
       }
 
@@ -1739,26 +1793,47 @@ export default defineComponent({
         /** @type {Blob} */
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, mimeType, imageQuality))
 
-        if (!process.env.IS_ELECTRON || screenshotAskPath.value) {
-          const saved = await writeFileWithPicker(
-            filenameWithExtension,
-            blob,
-            format.toUpperCase(),
-            mimeType,
-            `.${format}`,
-            'player-screenshots',
-            'pictures'
-          )
+        const results = { clipboard: false, file: false }
 
-          if (saved) {
+        // Handle clipboard action
+        if (action === 'clipboard' || action === 'both') {
+          results.clipboard = await copyToClipboard(blob, mimeType)
+        }
+
+        // Handle file action
+        if (action === 'file' || action === 'both') {
+          if (!process.env.IS_ELECTRON || screenshotAskPath.value) {
+            results.file = await writeFileWithPicker(
+              filenameWithExtension,
+              blob,
+              format.toUpperCase(),
+              mimeType,
+              `.${format}`,
+              'player-screenshots',
+              'pictures'
+            )
+          } else {
+            const arrayBuffer = await blob.arrayBuffer()
+            await window.ftElectron.writeToDefaultFolder(DefaultFolderKind.SCREENSHOTS, filenameWithExtension, arrayBuffer)
+            results.file = true
+          }
+        }
+
+        // Show appropriate toast message
+        if (action === 'clipboard') {
+          showToast(results.clipboard ? '已複製到剪貼簿' : '複製失敗')
+        } else if (action === 'file') {
+          if (results.file) {
             showToast(t('Screenshot Success'))
           }
-        } else {
-          const arrayBuffer = await blob.arrayBuffer()
-
-          await window.ftElectron.writeToDefaultFolder(DefaultFolderKind.SCREENSHOTS, filenameWithExtension, arrayBuffer)
-
-          showToast(t('Screenshot Success'))
+        } else if (action === 'both') {
+          if (results.clipboard && results.file) {
+            showToast('已儲存並複製到剪貼簿')
+          } else if (results.clipboard) {
+            showToast('已複製到剪貼簿（儲存失敗）')
+          } else if (results.file) {
+            showToast('已儲存（複製失敗）')
+          }
         }
       } catch (error) {
         console.error(error)
@@ -1766,7 +1841,7 @@ export default defineComponent({
       } finally {
         canvas.remove()
 
-        if ((!process.env.IS_ELECTRON || screenshotAskPath.value) && wasPlaying) {
+        if (shouldPauseForFilePicker && wasPlaying) {
           video_.play()
         }
       }
