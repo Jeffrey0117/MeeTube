@@ -871,7 +871,13 @@ export default defineComponent({
         // Only set it to label if we added the captions ourselves,
         // some live streams come with subtitles in the DASH manifest, but without labels
         textTrackLabelFormat: sortedCaptions.length > 0 ? TrackLabelFormat.LABEL : TrackLabelFormat.LANGUAGE,
-        displayInVrMode: useVrMode.value
+        displayInVrMode: useVrMode.value,
+
+        // Disable single click play/pause on mobile to prevent accidental triggers
+        // when trying to tap control buttons
+        singleClickForPlayAndPause: !onlyUseOverFlowMenu.value,
+        // Double click for fullscreen only on desktop
+        doubleClickForFullscreen: !onlyUseOverFlowMenu.value
       }
 
       /** @type {string[]} */

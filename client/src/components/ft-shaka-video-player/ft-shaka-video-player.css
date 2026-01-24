@@ -415,6 +415,25 @@
     min-height: 44px;
     padding: 12px 16px;
   }
+
+  /* Larger touch targets for control bar buttons */
+  :deep(.shaka-controls-button-panel button) {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+
+  /* Bigger overflow menu button */
+  :deep(.shaka-overflow-button) {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* Ensure play/pause button is easily tappable */
+  :deep(.shaka-play-button) {
+    min-width: 48px;
+    min-height: 48px;
+  }
 }
 
 /* Mobile: 50vh height like FreeTube */
