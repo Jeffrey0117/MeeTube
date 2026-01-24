@@ -363,9 +363,12 @@ export default defineComponent({
       // this has to be below checkIfPlaylist() as theatrePossible needs to know if there is a playlist or not
       this.setViewingModeOnFirstLoad()
 
+      console.log('[WATCH] SUPPORTS_LOCAL_API:', process.env.SUPPORTS_LOCAL_API, 'backendPreference:', this.backendPreference)
       if (!process.env.SUPPORTS_LOCAL_API || this.backendPreference === 'invidious') {
+        console.log('[WATCH] Using Invidious API')
         this.getVideoInformationInvidious()
       } else {
+        console.log('[WATCH] Using Local API')
         this.getVideoInformationLocal()
       }
 
@@ -392,6 +395,35 @@ export default defineComponent({
         case 'pip':
           this.startNextVideoInPip = true
       }
+    },
+
+    /**
+     * Prefetch English caption in background for faster loading
+     * @param {Array} captionTracks
+     */
+    prefetchEnglishCaption: function (captionTracks) {
+      const enCaption = captionTracks.find(t =>
+        t.language === 'en' || t.language?.startsWith('en')
+      )
+
+      if (!enCaption?.url) {
+        return
+      }
+
+      console.log('[WATCH] Prefetching English caption:', enCaption.url)
+
+      // Use fetch with low priority to not block video loading
+      fetch(enCaption.url, {
+        method: 'GET',
+        priority: 'low',
+        cache: 'default',
+      }).then(response => {
+        if (response.ok) {
+          console.log('[WATCH] English caption prefetched successfully')
+        }
+      }).catch(() => {
+        // Silently ignore prefetch errors
+      })
     },
 
     changeTimestamp: function (timestamp) {
@@ -749,18 +781,16 @@ export default defineComponent({
               }
             }
 
-            if (result.captions) {
-              const captionTracks = result.captions?.caption_tracks?.map((caption) => {
-                const url = new URL(caption.base_url)
-                url.searchParams.set('fmt', 'vtt')
-
+            if (result.captions && result.captions.length > 0) {
+              // Backend returns Invidious format: [{url, label, language_code}]
+              const captionTracks = result.captions.map((caption) => {
                 return {
-                  url: url.toString(),
-                  label: caption.name.text,
+                  url: caption.url,
+                  label: caption.label,
                   language: caption.language_code,
                   mimeType: 'text/vtt'
                 }
-              }) ?? []
+              })
 
               if (captionTracks.length > 0) {
                 const languagesSet = new Set([this.currentLocale, this.currentLocale.split('-')[0]])
@@ -780,7 +810,10 @@ export default defineComponent({
                     break
                 }
 
-                if (!captionTracks.some(captionTrack => languagesSet.has(captionTrack.language))) {
+                // Only try to get translated captions if we have youtubei.js format with translation_languages
+                // Our backend returns Invidious format (array) which doesn't support auto-translation
+                if (!captionTracks.some(captionTrack => languagesSet.has(captionTrack.language)) &&
+                    result.captions.translation_languages) {
                   const translatedCaptionTrack = this.getTranslatedLocaleCaption(result.captions, languagesSet)
 
                   if (translatedCaptionTrack) {
@@ -790,6 +823,9 @@ export default defineComponent({
               }
 
               this.captions = captionTracks
+
+              // Prefetch English caption in background
+              this.prefetchEnglishCaption(captionTracks)
 
               const captionLinks = captionTracks.map((caption) => {
                 const label = `${caption.label} (${caption.language}) - text/vtt`
