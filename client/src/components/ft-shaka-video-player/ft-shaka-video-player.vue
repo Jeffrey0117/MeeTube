@@ -4,7 +4,8 @@
     class="ftVideoPlayer shaka-video-container"
     :class="{
       fullWindow: fullWindowEnabled,
-      sixteenByNine: forceAspectRatio && !fullWindowEnabled
+      sixteenByNine: forceAspectRatio && !fullWindowEnabled,
+      'bilingual-mode': bilingualMode
     }"
   >
     <!-- eslint-disable-next-line vuejs-accessibility/media-has-caption -->

@@ -238,6 +238,11 @@
   font-size: 1.4em !important;
 }
 
+/* Hide native Shaka subtitles when bilingual mode is active */
+.bilingual-mode :deep(.shaka-text-container) {
+  display: none !important;
+}
+
 :deep(.shaka-text-container span) {
   /* Better subtitle background */
   background-color: rgba(0, 0, 0, 0.75) !important;

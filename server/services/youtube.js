@@ -66,6 +66,16 @@ function parseNetscapeCookie(cookieString) {
   return cookieStr
 }
 
+// Cached cookie for export
+let cachedCookie = null
+
+export function getYouTubeCookie() {
+  if (cachedCookie === null) {
+    cachedCookie = loadYouTubeCookie() || ''
+  }
+  return cachedCookie
+}
+
 // Initialize YouTube clients
 export async function initYouTube() {
   console.log('[YOUTUBE] Initializing...')
@@ -441,7 +451,7 @@ export function convertChannelVideos(videos, channelId) {
 }
 
 // Convert video info to Invidious format
-export async function convertVideoInfo(info, relatedVideos, channelAvatar = null) {
+export async function convertVideoInfo(info, relatedVideos, channelAvatar = null, captions = null) {
   const details = info.basic_info
   const streaming = info.streaming_data
   const playabilityStatus = info.playability_status
@@ -539,7 +549,19 @@ export async function convertVideoInfo(info, relatedVideos, channelAvatar = null
     dashUrl: `/api/manifest/dash/id/${details.id}`,
     adaptiveFormats: adaptiveFormats,
     formatStreams: formatStreams,
-    captions: [],
+    captions: (() => {
+      const captionSource = captions || info.captions
+      const tracks = captionSource?.caption_tracks || []
+      console.log(`[convertVideoInfo] Using ${tracks.length} caption tracks`)
+      return tracks.map(track => {
+        // Use yt-dlp endpoint for reliable caption fetching
+        return {
+          url: `/api/captions-ytdlp/${details.id}?lang=${track.language_code}`,
+          label: track.name?.text || track.language_code,
+          language_code: track.language_code
+        }
+      })
+    })(),
     recommendedVideos: recommendedVideos,
     playabilityStatus: playabilityStatus?.status || 'OK',
     errorMessage: errorMessage,

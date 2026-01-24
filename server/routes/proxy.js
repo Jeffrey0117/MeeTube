@@ -5,6 +5,7 @@
 
 import { Router } from 'express'
 import https from 'https'
+import { getYouTubeCookie } from '../services/youtube.js'
 
 const router = Router()
 
@@ -96,6 +97,58 @@ router.get('/imgproxy', (req, res) => {
   })
 })
 
+// Captions/subtitles proxy
+router.get('/captions', (req, res) => {
+  const encodedUrl = req.query.url
+  if (!encodedUrl) {
+    return res.status(400).send('Missing url parameter')
+  }
+
+  let targetUrl
+  try {
+    targetUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8')
+  } catch (e) {
+    return res.status(400).send('Invalid URL encoding')
+  }
+
+  console.log(`[CAPTIONS] ${targetUrl.substring(0, 80)}...`)
+
+  const parsedUrl = new URL(targetUrl)
+
+  const options = {
+    hostname: parsedUrl.hostname,
+    port: 443,
+    path: parsedUrl.pathname + parsedUrl.search,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/vtt, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': 'https://www.youtube.com/',
+      'Origin': 'https://www.youtube.com',
+    },
+  }
+
+  const proxyReq = https.request(options, (proxyRes) => {
+    console.log(`[CAPTIONS] Status: ${proxyRes.statusCode}, Content-Type: ${proxyRes.headers['content-type']}`)
+
+    res.set({
+      'Content-Type': proxyRes.headers['content-type'] || 'text/vtt; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+      'Access-Control-Allow-Origin': '*',
+    })
+    res.status(proxyRes.statusCode)
+    proxyRes.pipe(res)
+  })
+
+  proxyReq.on('error', (e) => {
+    console.error('[CAPTIONS ERROR]', e.message)
+    res.status(502).send('Caption fetch failed')
+  })
+
+  proxyReq.end()
+})
+
 // DASH Manifest proxy
 router.get('/manifest', (req, res) => {
   const encodedUrl = req.query.url
@@ -173,15 +226,26 @@ function handleVideoPlayback(req, res) {
     return res.status(400).json({ error: 'Invalid URL' })
   }
 
+  const headers = {
+    'User-Agent': 'com.google.android.youtube/19.45.38 (Linux; U; Android 14; en_US) gzip',
+    'Accept-Encoding': 'identity',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+  }
+
+  // Add cookie if available
+  const cookie = getYouTubeCookie()
+  if (cookie) {
+    headers['Cookie'] = cookie
+  }
+
   const options = {
     hostname: parsedUrl.hostname,
     port: 443,
     path: parsedUrl.pathname + parsedUrl.search,
     method: req.method,
-    headers: {
-      'User-Agent': 'com.google.android.youtube/19.02.39 (Linux; U; Android 14) gzip',
-      'Accept-Encoding': 'identity',
-    },
+    headers,
   }
 
   // Forward Range header for seek support

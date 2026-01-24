@@ -978,13 +978,14 @@ async function googleTranslate(text, targetLang = 'zh-TW') {
 }
 
 /**
- * 批次翻譯 (多句一次處理)
+ * 批次翻譯 (個別翻譯每個文本)
  */
 async function batchTranslate(texts, targetLang = 'zh-TW') {
-  const separator = '\n[SEP]\n'
-  const combined = texts.join(separator)
-  const translated = await googleTranslate(combined, targetLang)
-  return translated.split('[SEP]').map(t => t.trim())
+  // Translate each text individually in parallel for reliability
+  const translations = await Promise.all(
+    texts.map(text => googleTranslate(text, targetLang))
+  )
+  return translations
 }
 
 // Single text translation
