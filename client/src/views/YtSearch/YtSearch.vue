@@ -31,7 +31,7 @@
 
         <!-- Search Results -->
         <template v-else>
-          <div v-for="item in results" :key="item.videoId || item.id || item.playlistId" class="mb-4">
+          <div v-for="item in sortedResults" :key="item.videoId || item.id || item.playlistId" class="mb-4">
             <!-- Video Result -->
             <router-link
               v-if="item.type === 'video'"
@@ -45,6 +45,15 @@
                   class="w-full h-full object-cover"
                   loading="lazy"
                 />
+                <!-- Watched indicator -->
+                <div v-if="isWatched(item.videoId)" class="absolute top-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <font-awesome-icon :icon="['fas', 'check']" class="text-green-400" />
+                  <span>已觀看</span>
+                </div>
+                <!-- Watch progress bar -->
+                <div v-if="getWatchProgress(item.videoId) > 0" class="absolute bottom-0 left-0 right-0 h-1 bg-white/30">
+                  <div class="h-full bg-red-600" :style="{ width: getWatchProgressPercent(item) + '%' }"></div>
+                </div>
                 <div v-if="item.lengthSeconds" class="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 py-0.5 rounded">
                   {{ formatDuration(item.lengthSeconds) }}
                 </div>
@@ -126,7 +135,7 @@
           </div>
 
           <!-- No Results -->
-          <div v-if="!isLoading && results.length === 0" class="text-center py-12 text-gray-500">
+          <div v-if="!isLoading && sortedResults.length === 0" class="text-center py-12 text-gray-500">
             找不到「{{ searchQuery }}」的搜尋結果
           </div>
         </template>
@@ -136,6 +145,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { YtHeader, YtSidebar } from '../../components/yt-theme'
 
 export default {
@@ -151,8 +161,29 @@ export default {
       isLoading: false,
       isLoadingMore: false,
       hasMore: false,
-      page: 1,
       sidebarOpen: true
+    }
+  },
+  computed: {
+    ...mapGetters(['getHistoryCacheById']),
+    // Sort results: watched videos first, then by original order
+    sortedResults() {
+      const historyById = this.getHistoryCacheById || {}
+      return [...this.results].sort((a, b) => {
+        const aWatched = a.videoId && historyById[a.videoId]
+        const bWatched = b.videoId && historyById[b.videoId]
+
+        // Both watched: sort by most recently watched
+        if (aWatched && bWatched) {
+          return (bWatched.timeWatched || 0) - (aWatched.timeWatched || 0)
+        }
+        // Only a is watched: a comes first
+        if (aWatched && !bWatched) return -1
+        // Only b is watched: b comes first
+        if (!aWatched && bWatched) return 1
+        // Neither watched: keep original order
+        return 0
+      })
     }
   },
   watch: {
@@ -174,22 +205,24 @@ export default {
     async performSearch() {
       this.isLoading = true
       this.results = []
-      this.page = 1
+      this.hasMore = false
 
       try {
-        // Use local API server for search
         const response = await fetch(`/api/v1/search?q=${encodeURIComponent(this.searchQuery)}`)
         if (response.ok) {
           const data = await response.json()
-          if (data && Array.isArray(data)) {
+          // Handle both old format (array) and new format ({ results, hasMore })
+          if (Array.isArray(data)) {
             this.results = data.filter(item =>
               item.type === 'video' || item.type === 'channel' || item.type === 'playlist'
             )
-          } else {
-            this.results = []
+            this.hasMore = false
+          } else if (data.results) {
+            this.results = data.results.filter(item =>
+              item.type === 'video' || item.type === 'channel' || item.type === 'playlist'
+            )
+            this.hasMore = data.hasMore || false
           }
-          // Local API doesn't support pagination yet
-          this.hasMore = false
         }
       } catch (e) {
         console.error('Search failed:', e)
@@ -200,9 +233,30 @@ export default {
     },
 
     async loadMore() {
-      // Local API doesn't support pagination yet
-      // This function is kept for future implementation
-      this.hasMore = false
+      if (this.isLoadingMore || !this.hasMore) return
+      this.isLoadingMore = true
+
+      try {
+        const response = await fetch(
+          `/api/v1/search?q=${encodeURIComponent(this.searchQuery)}&continuation=1`
+        )
+        if (response.ok) {
+          const data = await response.json()
+          if (data.results && data.results.length > 0) {
+            const newResults = data.results.filter(item =>
+              item.type === 'video' || item.type === 'channel' || item.type === 'playlist'
+            )
+            this.results = [...this.results, ...newResults]
+            this.hasMore = data.hasMore || false
+          } else {
+            this.hasMore = false
+          }
+        }
+      } catch (e) {
+        console.error('Load more failed:', e)
+      }
+
+      this.isLoadingMore = false
     },
 
     getVideoThumbnail(video) {
@@ -253,6 +307,24 @@ export default {
         .replace(/(\d+)\s*minutes?\s*ago/i, '$1 分鐘前')
         .replace(/(\d+)\s*seconds?\s*ago/i, '$1 秒前')
         .replace(/just now/i, '剛剛')
+    },
+
+    isWatched(videoId) {
+      if (!videoId) return false
+      const historyById = this.getHistoryCacheById || {}
+      return !!historyById[videoId]
+    },
+
+    getWatchProgress(videoId) {
+      if (!videoId) return 0
+      const historyById = this.getHistoryCacheById || {}
+      return historyById[videoId]?.watchProgress || 0
+    },
+
+    getWatchProgressPercent(item) {
+      if (!item.videoId || !item.lengthSeconds) return 0
+      const progress = this.getWatchProgress(item.videoId)
+      return Math.min(100, (progress / item.lengthSeconds) * 100)
     }
   }
 }

@@ -160,13 +160,53 @@ async function prefetchCaption(videoId, langCode, baseUrl = null) {
 const router = Router()
 
 // Search
+// Search result cache for continuation (simple in-memory, expires after 10 min)
+const searchCache = new Map()
+const SEARCH_CACHE_TTL = 10 * 60 * 1000
+
 router.get('/search', async (req, res) => {
   try {
     const q = req.query.q || ''
+    const continuation = req.query.continuation
     const innertube = getInnertube()
-    const results = await innertube.search(q)
+
+    let results
+    let cacheKey = `search:${q}`
+
+    if (continuation && searchCache.has(cacheKey)) {
+      // Load more using cached search instance
+      const cached = searchCache.get(cacheKey)
+      if (cached.searchInstance && cached.searchInstance.has_continuation) {
+        results = await cached.searchInstance.getContinuation()
+        // Update cache with new instance
+        cached.searchInstance = results
+        cached.timestamp = Date.now()
+      } else {
+        return res.json({ results: [], hasMore: false })
+      }
+    } else {
+      // New search
+      results = await innertube.search(q)
+      // Cache the search instance for continuation
+      searchCache.set(cacheKey, {
+        searchInstance: results,
+        timestamp: Date.now()
+      })
+    }
+
+    // Clean old cache entries
+    const now = Date.now()
+    for (const [key, value] of searchCache) {
+      if (now - value.timestamp > SEARCH_CACHE_TTL) {
+        searchCache.delete(key)
+      }
+    }
+
     const converted = convertSearchResults(results.results || [])
-    res.json(converted)
+    res.json({
+      results: converted,
+      hasMore: results.has_continuation || false
+    })
   } catch (error) {
     console.error('[SEARCH]', error.message)
     res.status(500).json({ error: error.message })
