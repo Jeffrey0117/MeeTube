@@ -217,29 +217,36 @@ export default defineComponent({
   z-index: 100;
 }
 
+/* Ensure high z-index in fullscreen mode */
+:fullscreen .bilingual-subtitle-overlay,
+:-webkit-full-screen .bilingual-subtitle-overlay {
+  z-index: 2147483647;
+}
+
 /* Drag Handle */
 .drag-handle {
   padding: 6px 12px;
   margin-bottom: 4px;
   border-radius: 4px;
   cursor: grab;
-  color: rgba(255, 255, 255, 0.3);
-  background-color: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
   pointer-events: auto;
-  opacity: 0;
+  opacity: 0.5;
 }
 
 .drag-handle:hover,
 .drag-handle.handle-visible {
   opacity: 1;
-  color: rgba(255, 255, 255, 0.8);
-  background-color: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(0, 0, 0, 0.6);
 }
 
 .drag-handle:active {
   cursor: grabbing;
   color: #ffeb3b;
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
 .subtitle-content {
@@ -272,39 +279,67 @@ export default defineComponent({
 
 /* Desktop: larger text */
 .subtitle-original {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .subtitle-translation {
-  font-size: 18px;
+  font-size: 24px;
 }
 
 /* Mobile: smaller, compact text */
 .mobile-mode .subtitle-content {
-  max-width: 95%;
-  padding: 4px 8px;
-  gap: 2px;
+  max-width: 98%;
+  padding: 3px 6px;
+  gap: 1px;
 }
 
 .mobile-mode .subtitle-original {
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .mobile-mode .subtitle-translation {
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 /* Mobile: always show drag handle for touch */
 .mobile-mode .drag-handle {
   opacity: 0.6;
-  padding: 8px 16px;
+  padding: 6px 12px;
+}
+
+/* CSS media query fallback for small screens */
+@media only screen and (max-width: 680px) {
+  .subtitle-content {
+    max-width: 98% !important;
+    padding: 3px 6px !important;
+    gap: 1px !important;
+  }
+
+  .subtitle-original {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  .subtitle-translation {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .drag-handle {
+    opacity: 0.6;
+    padding: 6px 12px;
+  }
 }
 
 /* Tablet */
 @media only screen and (min-width: 681px) and (max-width: 1024px) {
-  .subtitle-original,
+  .subtitle-original {
+    font-size: 17px;
+  }
   .subtitle-translation {
-    font-size: 16px;
+    font-size: 18px;
   }
 }
 </style>

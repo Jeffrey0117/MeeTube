@@ -1018,9 +1018,9 @@ router.post('/translate/batch', async (req, res) => {
       return res.json({ translations: [] })
     }
 
-    // Limit batch size
-    if (texts.length > 50) {
-      return res.status(400).json({ error: 'Max 50 texts per batch' })
+    // Limit batch size (increased for progressive loading optimization)
+    if (texts.length > 100) {
+      return res.status(400).json({ error: 'Max 100 texts per batch' })
     }
 
     const translations = await batchTranslate(texts, targetLang)

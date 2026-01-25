@@ -46,10 +46,13 @@ import {
 import {
   parseVTT,
   fetchVTT,
-  translateSubtitles,
-  findSubtitleAtTime,
+  TranslationQueue,
   createSubtitleSync,
 } from '../../helpers/bilingual-subtitle'
+import {
+  getCachedTranslations,
+  setCachedTranslations,
+} from '../../helpers/subtitle-cache'
 import BilingualSubtitle from '../BilingualSubtitle/BilingualSubtitle.vue'
 
 /** @typedef {import('../../helpers/sponsorblock').SponsorBlockCategory} SponsorBlockCategory */
@@ -254,15 +257,26 @@ export default defineComponent({
     }
 
     // ============================================
-    // Bilingual Subtitle State
+    // Unified Subtitle State
     // ============================================
-    const bilingualMode = ref(false)
-    const bilingualVisible = ref(true)
-    const bilingualDisplayMode = ref('bilingual') // 'bilingual' | 'originalOnly' | 'translationOnly'
+    // subtitleMode: 'off' | 'english' | 'bilingual'
+    const subtitleMode = ref('off')
     const currentBilingualSubtitle = ref(null)
     const bilingualSubtitles = ref([])
     const isTranslatingSubtitles = ref(false)
+    const translationProgress = ref({ translated: 0, total: 0, percent: 0 })
     let bilingualSyncController = null
+    let translationQueue = null
+    let currentBilingualVideoId = null
+
+    // Computed for backward compatibility
+    const bilingualMode = computed(() => subtitleMode.value !== 'off')
+    const bilingualVisible = computed(() => subtitleMode.value !== 'off')
+    const bilingualDisplayMode = computed(() => {
+      if (subtitleMode.value === 'english') return 'originalOnly'
+      if (subtitleMode.value === 'bilingual') return 'bilingual'
+      return 'off'
+    })
 
     const showStats = ref(false)
     const stats = reactive({
@@ -887,8 +901,7 @@ export default defineComponent({
           'ft_autoplay_toggle',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
           'playback_rate',
-          'captions',
-          'ft_bilingual',
+          'ft_bilingual',  // Unified subtitle button (replaces captions)
           'ft_audio_tracks',
           'ft_equalizer',
           'loop',
@@ -905,8 +918,7 @@ export default defineComponent({
       } else {
         uiConfig.controlPanelElements.push(
           'ft_screenshot',
-          'captions',
-          'ft_bilingual',
+          'ft_bilingual',  // Unified subtitle button (replaces captions)
           'ft_equalizer',
           'loop',
           'ft_autoplay_toggle',
@@ -2202,25 +2214,19 @@ export default defineComponent({
     }
 
     function registerBilingualButton() {
-      // Handle toggle bilingual mode
-      events.addEventListener('toggleBilingualMode', async () => {
-        console.log('[BILINGUAL] Toggle event received')
-        await toggleBilingualMode()
-        events.dispatchEvent(new CustomEvent('bilingualStateChanged', {
-          detail: { enabled: bilingualMode.value }
+      // Handle cycle subtitle mode: off → english → bilingual → off
+      events.addEventListener('cycleSubtitleMode', async () => {
+        console.log('[SUBTITLE] Cycle mode event received, current:', subtitleMode.value)
+        await cycleSubtitleMode()
+        events.dispatchEvent(new CustomEvent('subtitleModeChanged', {
+          detail: { mode: subtitleMode.value }
         }))
-      })
-
-      // Handle cycle display mode
-      events.addEventListener('cycleBilingualDisplayMode', () => {
-        console.log('[BILINGUAL] Cycle display mode event received')
-        cycleBilingualDisplayMode()
       })
 
       // Button factory
       class BilingualButtonFactory {
         create(rootElement, controls) {
-          return new BilingualButton(bilingualMode.value, events, rootElement, controls)
+          return new BilingualButton(subtitleMode.value, events, rootElement, controls)
         }
       }
 
@@ -2903,7 +2909,14 @@ export default defineComponent({
     }
 
     function fullscreenChangeHandler() {
-      nextTick(showOverlayControls)
+      nextTick(() => {
+        showOverlayControls()
+        // Re-evaluate overflow menu based on current width (especially important for fullscreen on mobile)
+        if (container.value) {
+          const currentWidth = container.value.getBoundingClientRect().width
+          onlyUseOverFlowMenu.value = currentWidth <= USE_OVERFLOW_MENU_WIDTH_THRESHOLD
+        }
+      })
     }
 
     window.addEventListener('online', onlineHandler)
@@ -3065,14 +3078,14 @@ export default defineComponent({
       registerEqualizerButton()
       registerBilingualButton()
 
-      if (ui.isMobile()) {
-        onlyUseOverFlowMenu.value = true
-      } else {
-        onlyUseOverFlowMenu.value = container.value.getBoundingClientRect().width <= USE_OVERFLOW_MENU_WIDTH_THRESHOLD
+      // Initial evaluation of overflow menu based on width
+      // On mobile, start with overflow menu but still observe resize for fullscreen
+      const initialWidth = container.value.getBoundingClientRect().width
+      onlyUseOverFlowMenu.value = ui.isMobile() || initialWidth <= USE_OVERFLOW_MENU_WIDTH_THRESHOLD
 
-        resizeObserver = new ResizeObserver(resized)
-        resizeObserver.observe(container.value)
-      }
+      // Always observe resize to handle fullscreen changes on all devices
+      resizeObserver = new ResizeObserver(resized)
+      resizeObserver.observe(container.value)
 
       controls.addEventListener('uiupdated', addUICustomizations)
       configureUI(true)
@@ -3660,18 +3673,103 @@ export default defineComponent({
     // ============================================
 
     /**
-     * Enable bilingual subtitle mode
+     * Enable bilingual subtitle mode with progressive loading
      * @param {string} captionUrl - URL of the caption file
+     * @param {string} videoId - Video ID for caching
      */
-    async function enableBilingualMode(captionUrl) {
-      if (!captionUrl || !video.value) return
+    /**
+     * Enable subtitles with specified mode
+     * @param {string} mode - 'english' | 'bilingual'
+     * @param {boolean} silent - Don't show toast notifications
+     */
+    async function enableSubtitles(mode, silent = false) {
+      if (!video.value) return
+
+      // Find English caption
+      const enCaption = sortedCaptions.find(c =>
+        c.language?.startsWith('en') || c.label?.toLowerCase().includes('english')
+      ) || sortedCaptions[0]
+
+      if (!enCaption?.url) {
+        showToast('沒有可用的英文字幕', 3000)
+        return
+      }
+
+      const extractedVideoId = props.videoId || enCaption.url.match(/\/captions\/([^/?]+)/)?.[1] || 'unknown'
+      currentBilingualVideoId = extractedVideoId
 
       try {
         isTranslatingSubtitles.value = true
-        showToast('正在載入雙語字幕...', 2000)
 
-        // Fetch and parse VTT
-        const vttContent = await fetchVTT(captionUrl)
+        // Disable Shaka native subtitles
+        if (player) {
+          player.setTextTrackVisibility(false)
+        }
+
+        // For English-only mode, just load and display original text
+        if (mode === 'english') {
+          const vttContent = await fetchVTT(enCaption.url)
+          const parsedSubtitles = parseVTT(vttContent)
+
+          if (parsedSubtitles.length === 0) {
+            showToast('無法解析字幕', 3000)
+            isTranslatingSubtitles.value = false
+            return
+          }
+
+          bilingualSubtitles.value = parsedSubtitles
+
+          if (bilingualSyncController) {
+            bilingualSyncController.stop()
+          }
+
+          bilingualSyncController = createSubtitleSync(
+            video.value,
+            parsedSubtitles,
+            (subtitle) => {
+              currentBilingualSubtitle.value = subtitle
+            }
+          )
+          bilingualSyncController.start()
+
+          subtitleMode.value = 'english'
+          isTranslatingSubtitles.value = false
+          if (!silent) showToast('字幕: 英文', 1500)
+          return
+        }
+
+        // For bilingual mode, check cache first
+        const cachedSubtitles = getCachedTranslations(extractedVideoId, 'zh-TW')
+        if (cachedSubtitles && cachedSubtitles.length > 0) {
+          console.log(`[SUBTITLE] Cache HIT: ${cachedSubtitles.length} subtitles`)
+
+          bilingualSubtitles.value = cachedSubtitles
+
+          if (bilingualSyncController) {
+            bilingualSyncController.stop()
+          }
+
+          bilingualSyncController = createSubtitleSync(
+            video.value,
+            cachedSubtitles,
+            (subtitle) => {
+              currentBilingualSubtitle.value = subtitle
+            }
+          )
+          bilingualSyncController.start()
+
+          subtitleMode.value = 'bilingual'
+          isTranslatingSubtitles.value = false
+          translationProgress.value = { translated: cachedSubtitles.length, total: cachedSubtitles.length, percent: 100 }
+
+          if (!silent) showToast('字幕: 雙語', 1500)
+          return
+        }
+
+        // No cache - fetch and translate
+        if (!silent) showToast('載入雙語字幕...', 1500)
+
+        const vttContent = await fetchVTT(enCaption.url)
         const parsedSubtitles = parseVTT(vttContent)
 
         if (parsedSubtitles.length === 0) {
@@ -3680,126 +3778,117 @@ export default defineComponent({
           return
         }
 
-        console.log(`[BILINGUAL] Parsed ${parsedSubtitles.length} subtitles`)
+        console.log(`[SUBTITLE] Parsed ${parsedSubtitles.length} subtitles`)
 
-        // Translate subtitles
-        showToast('正在翻譯字幕...', 3000)
-        const translatedSubtitles = await translateSubtitles(
-          parsedSubtitles,
-          'zh-TW',
-          (current, total) => {
-            console.log(`[BILINGUAL] Translating: ${current}/${total}`)
+        if (translationQueue) {
+          translationQueue.destroy()
+        }
+
+        translationQueue = new TranslationQueue({
+          concurrency: 5,
+          batchSize: 10,
+          preloadWindow: 120,
+          targetLang: 'zh-TW',
+          onUpdate: (subtitles) => {
+            bilingualSubtitles.value = [...subtitles]
+          },
+          onProgress: (translated, total) => {
+            translationProgress.value = {
+              translated,
+              total,
+              percent: total > 0 ? Math.round((translated / total) * 100) : 0
+            }
           }
-        )
+        })
 
-        bilingualSubtitles.value = translatedSubtitles
-        console.log(`[BILINGUAL] Translation complete`)
+        await translationQueue.initialize(parsedSubtitles, 50)
 
-        // Start sync controller
         if (bilingualSyncController) {
           bilingualSyncController.stop()
         }
 
         bilingualSyncController = createSubtitleSync(
           video.value,
-          translatedSubtitles,
+          translationQueue,
           (subtitle) => {
             currentBilingualSubtitle.value = subtitle
           }
         )
         bilingualSyncController.start()
 
-        // Disable Shaka native subtitles
-        if (player) {
-          player.setTextTrackVisibility(false)
-        }
-
-        bilingualMode.value = true
-        bilingualVisible.value = true
+        subtitleMode.value = 'bilingual'
         isTranslatingSubtitles.value = false
 
-        showToast('雙語字幕已啟用', 2000)
+        if (!silent) showToast('字幕: 雙語', 1500)
+
+        // Continue translating in background
+        translationQueue.translateRemaining().then(() => {
+          if (translationQueue && translationQueue.isComplete()) {
+            const allSubtitles = translationQueue.getAllSubtitles()
+            setCachedTranslations(extractedVideoId, 'zh-TW', allSubtitles)
+            console.log(`[SUBTITLE] Saved ${allSubtitles.length} subtitles to cache`)
+          }
+        })
+
       } catch (error) {
-        console.error('[BILINGUAL] Error:', error)
-        showToast('載入雙語字幕失敗', 3000)
+        console.error('[SUBTITLE] Error:', error)
+        showToast('載入字幕失敗', 3000)
         isTranslatingSubtitles.value = false
       }
     }
 
     /**
-     * Disable bilingual subtitle mode
+     * Disable subtitles
+     * @param {boolean} silent - Don't show toast notifications
      */
-    function disableBilingualMode() {
-      bilingualMode.value = false
+    function disableSubtitles(silent = false) {
+      subtitleMode.value = 'off'
       currentBilingualSubtitle.value = null
+      translationProgress.value = { translated: 0, total: 0, percent: 0 }
 
       if (bilingualSyncController) {
         bilingualSyncController.stop()
         bilingualSyncController = null
       }
 
-      // Re-enable Shaka native subtitles if there was one active
-      if (player && player.getTextTracks().length > 0) {
-        player.setTextTrackVisibility(true)
+      if (translationQueue) {
+        translationQueue.destroy()
+        translationQueue = null
       }
 
-      showToast('雙語字幕已關閉', 2000)
+      currentBilingualVideoId = null
+
+      // Disable Shaka native subtitles too
+      if (player) {
+        player.setTextTrackVisibility(false)
+      }
+
+      if (!silent) showToast('字幕: 關閉', 1500)
     }
 
     /**
-     * Toggle bilingual mode
+     * Cycle subtitle mode: off → english → bilingual → off
      */
-    async function toggleBilingualMode() {
-      if (bilingualMode.value) {
-        disableBilingualMode()
+    async function cycleSubtitleMode() {
+      const modes = ['off', 'english', 'bilingual']
+      const currentIndex = modes.indexOf(subtitleMode.value)
+      const nextMode = modes[(currentIndex + 1) % modes.length]
+
+      console.log(`[SUBTITLE] Cycling from ${subtitleMode.value} to ${nextMode}`)
+
+      // Show single toast for the final state
+      if (nextMode === 'off') {
+        disableSubtitles(false) // show toast
       } else {
-        // Find the currently selected or first English caption
-        const textTracks = player?.getTextTracks() || []
-        const activeTrack = textTracks.find(t => t.active)
-        const enTrack = textTracks.find(t => t.language?.startsWith('en'))
-        const track = activeTrack || enTrack || textTracks[0]
-
-        if (!track) {
-          showToast('沒有可用的字幕', 3000)
-          return
-        }
-
-        // Find the caption URL from sortedCaptions
-        const caption = sortedCaptions.find(c =>
-          c.language === track.language || c.label === track.label
-        )
-
-        if (caption?.url) {
-          await enableBilingualMode(caption.url)
-        } else {
-          showToast('無法取得字幕 URL', 3000)
-        }
+        await enableSubtitles(nextMode, false) // show toast
       }
     }
 
-    /**
-     * Cycle through display modes
-     */
-    function cycleBilingualDisplayMode() {
-      const modes = ['bilingual', 'originalOnly', 'translationOnly']
-      const currentIndex = modes.indexOf(bilingualDisplayMode.value)
-      const nextIndex = (currentIndex + 1) % modes.length
-      bilingualDisplayMode.value = modes[nextIndex]
-
-      const modeNames = {
-        bilingual: '雙語',
-        originalOnly: '僅原文',
-        translationOnly: '僅翻譯'
-      }
-      showToast(`字幕模式: ${modeNames[bilingualDisplayMode.value]}`, 2000)
-    }
-
-    // Expose bilingual functions
+    // Expose subtitle functions
     expose({
-      enableBilingualMode,
-      disableBilingualMode,
-      toggleBilingualMode,
-      cycleBilingualDisplayMode,
+      enableSubtitles,
+      disableSubtitles,
+      cycleSubtitleMode,
     })
 
     return {
@@ -3836,12 +3925,14 @@ export default defineComponent({
       showValueChangePopup,
       invertValueChangeContentOrder,
 
-      // Bilingual Subtitles
+      // Subtitles
+      subtitleMode,
       bilingualMode,
       bilingualVisible,
       bilingualDisplayMode,
       currentBilingualSubtitle,
       isTranslatingSubtitles,
+      translationProgress,
     }
   }
 })

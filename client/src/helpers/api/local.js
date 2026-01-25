@@ -571,6 +571,8 @@ export async function getLocalVideoInfo(id) {
     }
   }
 
+  console.log('[LOCAL API] info.captions:', info.captions)
+
   if (info.captions?.caption_tracks) {
     for (const captionTrack of info.captions.caption_tracks) {
       const url = new URL(captionTrack.base_url)
