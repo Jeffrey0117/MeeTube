@@ -191,6 +191,7 @@ export default {
       videoLikeCount: 0,
       videoPublished: null,
       videoPublishedText: '',
+      videoDuration: 0,
       channelId: '',
       channelName: '',
       channelThumbnail: '',
@@ -207,7 +208,10 @@ export default {
       startTimeSeconds: 0,
       relatedVideos: [],
       sidebarOpen: false,
-      isLive: false
+      isLive: false,
+      // History tracking
+      lastSavedProgress: 0,
+      historySaveTimer: null
     }
   },
   computed: {
@@ -219,6 +223,9 @@ export default {
     },
     isChannelSubscribed() {
       return this.$store.getters['subscriptions/isSubscribed'](this.channelId)
+    },
+    historyCacheById() {
+      return this.$store.getters.getHistoryCacheById || {}
     }
   },
   watch: {
@@ -232,6 +239,16 @@ export default {
       immediate: true
     }
   },
+  beforeUnmount() {
+    // Save final progress before leaving
+    const player = this.$refs.player
+    if (player && typeof player.getCurrentTime === 'function') {
+      const currentTime = player.getCurrentTime()
+      if (currentTime > 0) {
+        this.saveWatchProgress(currentTime)
+      }
+    }
+  },
   methods: {
     toggleSidebar() {
       this.sidebarOpen = !this.sidebarOpen
@@ -242,6 +259,17 @@ export default {
       this.errorMessage = ''
       this.manifestSrc = null
       this.relatedVideos = []
+      this.lastSavedProgress = 0
+
+      // Check for saved watch progress to resume
+      const historyEntry = this.historyCacheById[this.videoId]
+      if (historyEntry?.watchProgress && historyEntry.watchProgress > 10) {
+        // Resume from last position (minus 5 seconds for context)
+        this.startTimeSeconds = Math.max(0, historyEntry.watchProgress - 5)
+        console.log('[YtWatch] Resuming from', this.startTimeSeconds, 'seconds')
+      } else {
+        this.startTimeSeconds = 0
+      }
 
       try {
         console.log('Loading video (Invidious API):', this.videoId)
@@ -284,6 +312,9 @@ export default {
 
         // Live check
         this.isLive = !!result.liveNow
+
+        // Duration
+        this.videoDuration = result.lengthSeconds || 0
 
         // Streaming data
         // Legacy formats
@@ -353,19 +384,85 @@ export default {
 
     handlePlayerError(error) {
       console.error('Player error:', error)
-      this.errorMessage = '播放器發生錯誤'
+
+      // Check if it's a recoverable error
+      const errorCode = error?.code || 0
+
+      // Network errors (1xxx) - often recoverable
+      if (errorCode >= 1000 && errorCode < 2000) {
+        console.log('[YtWatch] Network error, will retry...')
+        // Don't show error, player should recover
+        return
+      }
+
+      // Media errors (3xxx) - try fallback to legacy
+      if (errorCode >= 3000 && errorCode < 4000) {
+        if (this.activeFormat === 'dash' && this.legacyFormats.length > 0) {
+          console.log('[YtWatch] Switching to legacy format...')
+          this.activeFormat = 'legacy'
+          return
+        }
+      }
+
+      this.errorMessage = '播放器發生錯誤，請重試'
     },
 
     handleVideoLoaded() {
       console.log('Video loaded successfully')
+      // Save to history when video starts playing
+      this.saveToHistory()
     },
 
-    updateCurrentChapter(time) {
+    updateCurrentChapter(currentTime) {
       // Update chapter index based on time
+      // Also save watch progress periodically (every 5 seconds of progress)
+      if (Math.abs(currentTime - this.lastSavedProgress) >= 5) {
+        this.lastSavedProgress = currentTime
+        this.saveWatchProgress(currentTime)
+      }
     },
 
     handleVideoEnded() {
-      // Handle video end - could autoplay next
+      // Save final progress
+      if (this.videoDuration) {
+        this.saveWatchProgress(this.videoDuration)
+      }
+    },
+
+    // Save video to watch history
+    saveToHistory() {
+      if (!this.videoId || !this.videoTitle) return
+
+      const historyEntry = {
+        videoId: this.videoId,
+        title: this.videoTitle,
+        author: this.channelName,
+        authorId: this.channelId,
+        description: this.videoDescription?.substring(0, 200) || '',
+        viewCount: this.videoViewCount,
+        lengthSeconds: this.videoDuration || 0,
+        timeWatched: Date.now(),
+        watchProgress: 0,
+        isLive: this.isLive,
+        type: 'video'
+      }
+
+      // Add thumbnail
+      if (this.thumbnail) {
+        historyEntry.videoThumbnails = [{ url: this.thumbnail, quality: 'medium' }]
+      }
+
+      console.log('[YtWatch] Saving to history:', historyEntry.videoId)
+      this.$store.dispatch('updateHistory', historyEntry)
+    },
+
+    // Update watch progress
+    saveWatchProgress(currentTime) {
+      if (!this.videoId) return
+      this.$store.dispatch('updateWatchProgress', {
+        videoId: this.videoId,
+        watchProgress: Math.floor(currentTime)
+      })
     },
 
     formatCount(count) {
