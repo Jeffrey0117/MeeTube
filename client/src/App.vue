@@ -213,6 +213,11 @@ onMounted(async () => {
   // 立即顯示 UI - 不等待其他資料
   dataReady.value = true
 
+  // 隱藏載入畫面
+  if (typeof window !== 'undefined' && window.hideMeetubeLoader) {
+    window.hideMeetubeLoader()
+  }
+
   // 註冊事件監聽器
   document.addEventListener('click', handleClick)
   document.addEventListener('auxclick', handleAuxClick)

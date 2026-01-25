@@ -59,17 +59,17 @@
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
   <script>
-    // Hide loader when Vue app is ready
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var loader = document.getElementById('app-loader');
-        if (loader) {
-          loader.style.opacity = '0';
-          loader.style.transition = 'opacity 0.3s';
-          setTimeout(function() { loader.remove(); }, 300);
-        }
-      }, 100);
-    });
+    // Expose function to hide loader (called by Vue when mounted)
+    window.hideMeetubeLoader = function() {
+      var loader = document.getElementById('app-loader');
+      if (loader) {
+        loader.style.opacity = '0';
+        loader.style.transition = 'opacity 0.2s';
+        setTimeout(function() { loader.remove(); }, 200);
+      }
+    };
+    // Fallback: hide after 5 seconds if Vue fails to load
+    setTimeout(function() { window.hideMeetubeLoader(); }, 5000);
   </script>
 </body>
 </html>

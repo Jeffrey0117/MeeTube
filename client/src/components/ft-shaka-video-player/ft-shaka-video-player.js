@@ -888,8 +888,9 @@ export default defineComponent({
         textTrackLabelFormat: sortedCaptions.length > 0 ? TrackLabelFormat.LABEL : TrackLabelFormat.LANGUAGE,
         displayInVrMode: useVrMode.value,
 
-        // Keep click-to-play enabled for all devices
-        singleClickForPlayAndPause: true,
+        // Mobile: single click shows controls only, need to tap play button to pause
+        // Desktop: single click toggles play/pause
+        singleClickForPlayAndPause: !('ontouchstart' in window || navigator.maxTouchPoints > 0),
         // Double click for fullscreen on all devices
         doubleClickForFullscreen: true
       }
