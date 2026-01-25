@@ -52,7 +52,7 @@
     </div>
 
     <!-- Mobile Search Button -->
-    <button class="yt-mobile-search-btn" @click="toggleMobileSearch">
+    <button class="yt-mobile-search-btn" @click.stop="toggleMobileSearch">
       <font-awesome-icon :icon="['fas', 'search']" />
     </button>
 
@@ -73,8 +73,8 @@
     </div>
 
     <!-- Mobile Search Overlay -->
-    <div v-if="mobileSearchOpen" class="yt-mobile-search-overlay">
-      <button class="yt-back-btn" @click="toggleMobileSearch">
+    <div v-if="mobileSearchOpen" class="yt-mobile-search-overlay" @click.stop>
+      <button class="yt-back-btn" @click.stop="toggleMobileSearch">
         <font-awesome-icon :icon="['fas', 'arrow-left']" />
       </button>
       <input
@@ -85,8 +85,9 @@
         placeholder="搜尋"
         @input="onSearchInput"
         @keyup.enter="handleMobileSearch"
+        @click.stop
       />
-      <button class="yt-search-btn-mobile" @click="handleMobileSearch">
+      <button class="yt-search-btn-mobile" @click.stop="handleMobileSearch">
         <font-awesome-icon :icon="['fas', 'search']" />
       </button>
     </div>

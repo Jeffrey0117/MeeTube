@@ -217,11 +217,7 @@ export default defineComponent({
   z-index: 100;
 }
 
-/* Ensure high z-index in fullscreen mode */
-:fullscreen .bilingual-subtitle-overlay,
-:-webkit-full-screen .bilingual-subtitle-overlay {
-  z-index: 2147483647;
-}
+/* z-index handled in unscoped style below */
 
 /* Drag Handle */
 .drag-handle {
@@ -376,5 +372,33 @@ export default defineComponent({
   .bilingual-subtitle-overlay {
     z-index: 2147483646;
   }
+}
+</style>
+
+<!-- Unscoped styles for fullscreen mode - scoped styles don't work with :fullscreen -->
+<style>
+/* Fullscreen mode: ensure subtitle is visible above Shaka controls */
+.shaka-video-container:fullscreen .bilingual-subtitle-overlay,
+.shaka-video-container:-webkit-full-screen .bilingual-subtitle-overlay,
+.ftVideoPlayer:fullscreen .bilingual-subtitle-overlay,
+.ftVideoPlayer:-webkit-full-screen .bilingual-subtitle-overlay {
+  z-index: 2147483647 !important;
+  position: absolute !important;
+}
+
+/* iOS fullscreen (uses different mechanism) */
+video::-webkit-media-controls {
+  z-index: 2147483640;
+}
+
+/* Ensure subtitle container stays visible in all fullscreen scenarios */
+:fullscreen .bilingual-subtitle-overlay,
+:-webkit-full-screen .bilingual-subtitle-overlay,
+:-moz-full-screen .bilingual-subtitle-overlay,
+:-ms-fullscreen .bilingual-subtitle-overlay {
+  z-index: 2147483647 !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 </style>

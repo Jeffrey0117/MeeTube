@@ -66,8 +66,19 @@ export default {
     },
     thumbnailUrl() {
       if (this.video.videoThumbnails && this.video.videoThumbnails.length > 0) {
-        const medium = this.video.videoThumbnails.find(t => t.quality === 'medium' || t.quality === 'mqdefault')
-        return medium?.url || this.video.videoThumbnails[0].url
+        // Prefer higher quality thumbnails: maxres > high > medium > default
+        const preferred = this.video.videoThumbnails.find(t =>
+          t.quality === 'maxres' || t.quality === 'maxresdefault'
+        ) || this.video.videoThumbnails.find(t =>
+          t.quality === 'high' || t.quality === 'hqdefault'
+        ) || this.video.videoThumbnails.find(t =>
+          t.quality === 'medium' || t.quality === 'mqdefault'
+        )
+        return preferred?.url || this.video.videoThumbnails[0].url
+      }
+      // Fallback to direct YouTube URL
+      if (this.video.videoId) {
+        return `/vi/${this.video.videoId}/hqdefault.jpg`
       }
       return ''
     },
