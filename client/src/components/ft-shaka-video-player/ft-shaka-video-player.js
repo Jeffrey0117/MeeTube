@@ -1240,6 +1240,17 @@ export default defineComponent({
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing'
       }
+
+      // Resume AudioContext on mobile (iOS requires user interaction)
+      // This ensures EQ and audio effects work on mobile devices
+      const audioInfo = getAudioContext(video.value)
+      if (audioInfo?.audioContext?.state === 'suspended') {
+        audioInfo.audioContext.resume().then(() => {
+          console.log('[AudioContext] Resumed after user interaction')
+        }).catch(err => {
+          console.warn('[AudioContext] Failed to resume:', err)
+        })
+      }
     }
 
     function handlePause() {
