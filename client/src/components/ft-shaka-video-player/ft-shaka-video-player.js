@@ -261,6 +261,7 @@ export default defineComponent({
     // ============================================
     // subtitleMode: 'off' | 'english' | 'bilingual'
     const subtitleMode = ref('off')
+    const subtitleLoading = ref(false) // Lock to prevent rapid clicking
     const currentBilingualSubtitle = ref(null)
     const bilingualSubtitles = ref([])
     const isTranslatingSubtitles = ref(false)
@@ -2216,11 +2217,32 @@ export default defineComponent({
     function registerBilingualButton() {
       // Handle cycle subtitle mode: off → english → bilingual → off
       events.addEventListener('cycleSubtitleMode', async () => {
+        // Prevent rapid clicking - ignore if already loading
+        if (subtitleLoading.value) {
+          console.log('[SUBTITLE] Ignoring click - already loading')
+          return
+        }
+
         console.log('[SUBTITLE] Cycle mode event received, current:', subtitleMode.value)
-        await cycleSubtitleMode()
-        events.dispatchEvent(new CustomEvent('subtitleModeChanged', {
-          detail: { mode: subtitleMode.value }
+
+        // Set loading state
+        subtitleLoading.value = true
+        events.dispatchEvent(new CustomEvent('subtitleLoadingChanged', {
+          detail: { loading: true }
         }))
+
+        try {
+          await cycleSubtitleMode()
+          events.dispatchEvent(new CustomEvent('subtitleModeChanged', {
+            detail: { mode: subtitleMode.value }
+          }))
+        } finally {
+          // Clear loading state
+          subtitleLoading.value = false
+          events.dispatchEvent(new CustomEvent('subtitleLoadingChanged', {
+            detail: { loading: false }
+          }))
+        }
       })
 
       // Button factory
@@ -3876,11 +3898,25 @@ export default defineComponent({
 
       console.log(`[SUBTITLE] Cycling from ${subtitleMode.value} to ${nextMode}`)
 
-      // Show single toast for the final state
-      if (nextMode === 'off') {
-        disableSubtitles(false) // show toast
-      } else {
-        await enableSubtitles(nextMode, false) // show toast
+      // Show loading toast for bilingual mode (which can take time)
+      let loadingAbort = null
+      if (nextMode === 'bilingual') {
+        loadingAbort = new AbortController()
+        showToast('載入字幕中...', 10000, null, loadingAbort.signal)
+      }
+
+      try {
+        // Perform the mode change
+        if (nextMode === 'off') {
+          disableSubtitles(false) // show toast
+        } else {
+          await enableSubtitles(nextMode, false) // show toast
+        }
+      } finally {
+        // Cancel loading toast if it was shown
+        if (loadingAbort) {
+          loadingAbort.abort()
+        }
       }
     }
 

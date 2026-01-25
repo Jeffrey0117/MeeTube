@@ -227,7 +227,7 @@ function handleVideoPlayback(req, res) {
   }
 
   const headers = {
-    'User-Agent': 'com.google.android.youtube/19.45.38 (Linux; U; Android 14; en_US) gzip',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     'Accept-Encoding': 'identity',
     'Accept': '*/*',
     'Accept-Language': 'en-US,en;q=0.9',

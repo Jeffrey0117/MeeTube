@@ -51,13 +51,27 @@ export class BilingualButton extends shaka.ui.Element {
     this.currentMode_ = currentMode || 'off'
 
     /** @private */
+    this.isLoading_ = false
+
+    /** @private */
     this.events_ = events
 
     // Click to cycle modes: off → english → bilingual → off
     this.eventManager.listen(this.button_, 'click', (e) => {
       e.stopPropagation()
+      // Ignore clicks while loading
+      if (this.isLoading_) {
+        console.log('[SUBTITLE] Button click ignored - loading')
+        return
+      }
       console.log('[SUBTITLE] Button clicked, current mode:', this.currentMode_)
       events.dispatchEvent(new CustomEvent('cycleSubtitleMode'))
+    })
+
+    // Listen for loading state changes
+    this.eventManager.listen(events, 'subtitleLoadingChanged', (/** @type {CustomEvent} */event) => {
+      this.isLoading_ = event.detail.loading
+      this.updateLoadingState_()
     })
 
     // Listen for state changes
@@ -71,6 +85,19 @@ export class BilingualButton extends shaka.ui.Element {
     })
 
     this.updateLocalisedStrings_()
+  }
+
+  /** @private */
+  updateLoadingState_() {
+    if (this.isLoading_) {
+      this.button_.classList.add('bilingual-loading')
+      this.button_.style.opacity = '0.6'
+      this.button_.style.pointerEvents = 'none'
+    } else {
+      this.button_.classList.remove('bilingual-loading')
+      this.button_.style.opacity = ''
+      this.button_.style.pointerEvents = ''
+    }
   }
 
   /** @private */
