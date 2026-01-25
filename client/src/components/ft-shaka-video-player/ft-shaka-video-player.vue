@@ -140,9 +140,9 @@
           </div>
         </div>
       </Transition>
-      <!-- Bilingual Subtitle Overlay -->
+      <!-- Bilingual Subtitle Overlay (normal mode) -->
       <BilingualSubtitle
-        v-if="bilingualMode"
+        v-if="bilingualMode && !isIOSVideoFullscreen"
         :current-subtitle="currentBilingualSubtitle"
         :display-mode="bilingualDisplayMode"
         :visible="bilingualVisible"
@@ -151,6 +151,29 @@
         :background-opacity="75"
       />
     </div>
+
+    <!-- iOS Fullscreen Subtitle (teleported to body) -->
+    <Teleport to="body">
+      <div
+        v-if="bilingualMode && isIOSVideoFullscreen && currentBilingualSubtitle"
+        class="ios-fullscreen-subtitle"
+      >
+        <div class="ios-subtitle-content">
+          <div
+            v-if="bilingualDisplayMode !== 'originalOnly' && currentBilingualSubtitle.translation"
+            class="ios-subtitle-translation"
+          >
+            {{ currentBilingualSubtitle.translation }}
+          </div>
+          <div
+            v-if="bilingualDisplayMode !== 'translationOnly'"
+            class="ios-subtitle-original"
+          >
+            {{ currentBilingualSubtitle.text }}
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -241,6 +264,65 @@
   .ftVideoPlayer:fullscreen .subtitle-translation,
   .ftVideoPlayer:-webkit-full-screen .subtitle-translation {
     font-size: 18px !important;
+  }
+}
+
+/* ==========================================
+   iOS VIDEO FULLSCREEN SUBTITLE
+   When iOS Safari fullscreens only the video element,
+   we teleport subtitle to body with fixed positioning
+   ========================================== */
+.ios-fullscreen-subtitle {
+  position: fixed !important;
+  left: 0;
+  right: 0;
+  bottom: 15%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483647 !important;
+  pointer-events: none;
+}
+
+.ios-subtitle-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 92%;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+.ios-subtitle-original {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-shadow:
+    1px 1px 2px rgba(0, 0, 0, 0.9),
+    -1px -1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.ios-subtitle-translation {
+  color: #ffeb3b;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-shadow:
+    1px 1px 2px rgba(0, 0, 0, 0.9),
+    -1px -1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Landscape mode - slightly larger */
+@media screen and (orientation: landscape) {
+  .ios-subtitle-original {
+    font-size: 18px;
+  }
+  .ios-subtitle-translation {
+    font-size: 20px;
   }
 }
 </style>

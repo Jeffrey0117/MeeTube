@@ -270,6 +270,10 @@ export default defineComponent({
     let translationQueue = null
     let currentBilingualVideoId = null
 
+    // iOS Safari video-only fullscreen detection
+    // (iOS doesn't support container fullscreen, only video element fullscreen)
+    const isIOSVideoFullscreen = ref(false)
+
     // Computed for backward compatibility
     const bilingualMode = computed(() => subtitleMode.value !== 'off')
     const bilingualVisible = computed(() => subtitleMode.value !== 'off')
@@ -3149,6 +3153,20 @@ export default defineComponent({
       // cursor is in the video player area when the video first loads
       container.value.classList.add('no-cursor')
 
+      // iOS Safari: video-only fullscreen detection
+      // iOS doesn't support fullscreening arbitrary elements - only video elements
+      // When video goes fullscreen on iOS, we need to show subtitles in a teleported overlay
+      videoElement.addEventListener('webkitbeginfullscreen', () => {
+        isIOSVideoFullscreen.value = true
+      })
+      videoElement.addEventListener('webkitendfullscreen', () => {
+        isIOSVideoFullscreen.value = false
+      })
+      // Also listen for webkitpresentationmodechanged (covers more iOS cases)
+      videoElement.addEventListener('webkitpresentationmodechanged', () => {
+        isIOSVideoFullscreen.value = videoElement.webkitPresentationMode === 'fullscreen'
+      })
+
       await performFirstLoad()
 
       player.addEventListener('ratechange', () => {
@@ -3970,6 +3988,7 @@ export default defineComponent({
       currentBilingualSubtitle,
       isTranslatingSubtitles,
       translationProgress,
+      isIOSVideoFullscreen,
     }
   }
 })
