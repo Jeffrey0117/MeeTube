@@ -2,13 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="MeeTube - A private YouTube client">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>MeeTube</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    /* Instant loading screen - shows before JS loads */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0f0f0f;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #app-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #0f0f0f;
+      z-index: 99999;
+    }
+    .loader-logo {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .loader-logo .mee { color: #ef4444; }
+    .loader-logo .tube { color: #fff; }
+    .loader-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #ef4444;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <!-- Loading screen - visible immediately -->
+  <div id="app-loader">
+    <div class="loader-logo">
+      <span class="mee">Mee</span><span class="tube">Tube</span>
+    </div>
+    <div class="loader-spinner"></div>
+  </div>
+
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
+  <script>
+    // Hide loader when Vue app is ready
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var loader = document.getElementById('app-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.transition = 'opacity 0.3s';
+          setTimeout(function() { loader.remove(); }, 300);
+        }
+      }, 100);
+    });
+  </script>
 </body>
 </html>

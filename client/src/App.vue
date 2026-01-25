@@ -199,63 +199,64 @@ const defaultInvidiousInstance = computed(() => store.getters.getDefaultInvidiou
 const dataReady = ref(false)
 
 onMounted(async () => {
+  // MeeTube 優化：立即顯示 UI，不等待所有資料載入
+  // 只需要最基本的設定（主題色等）
   await store.dispatch('grabUserSettings')
-
-  // 初始化用戶系統，恢復已登入用戶的 session
-  try {
-    await store.dispatch('user/initializeUser')
-    // 初始化收藏同步
-    await store.dispatch('favorites/initFavorites')
-  } catch (error) {
-    console.error('Failed to initialize user session:', error)
-  }
-
-  // 初始化 YouTube Cookie 認證狀態
-  try {
-    await store.dispatch('youtubeAuth/initializeYouTubeAuth')
-  } catch (error) {
-    console.error('Failed to initialize YouTube auth:', error)
-  }
-
   updateTheme()
 
-  await store.dispatch('fetchInvidiousInstancesFromFile')
-
-  // 如果是遠程訪問，強制使用同域名 API
+  // 設定 API 端點
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     const apiUrl = `${window.location.protocol}//${window.location.hostname}`
     store.commit('setCurrentInvidiousInstance', apiUrl)
-  } else if (defaultInvidiousInstance.value === '') {
-    await store.dispatch('setRandomCurrentInvidiousInstance')
   }
 
-  store.dispatch('fetchInvidiousInstances').then(() => {
-    // 遠程訪問時不要覆蓋我們的 API 設定
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return
+  // 立即顯示 UI - 不等待其他資料
+  dataReady.value = true
+
+  // 註冊事件監聽器
+  document.addEventListener('click', handleClick)
+  document.addEventListener('auxclick', handleAuxClick)
+
+  // 非關鍵資料在背景載入（不阻塞 UI）
+  setTimeout(async () => {
+    try {
+      // 用戶 session 恢復
+      await store.dispatch('user/initializeUser')
+      await store.dispatch('favorites/initFavorites')
+    } catch (error) {
+      console.error('Failed to initialize user session:', error)
     }
-    if (defaultInvidiousInstance.value === '') {
-      store.dispatch('setRandomCurrentInvidiousInstance')
+
+    try {
+      await store.dispatch('youtubeAuth/initializeYouTubeAuth')
+    } catch (error) {
+      console.error('Failed to initialize YouTube auth:', error)
     }
-  })
 
-  store.dispatch('grabAllProfiles', t('Profile.All Channels')).then(() => {
-    store.dispatch('grabHistory')
-    store.dispatch('grabAllPlaylists')
-    store.dispatch('grabAllSubscriptions')
-    store.dispatch('grabSearchHistoryEntries')
+    // 背景載入其他資料
+    store.dispatch('fetchInvidiousInstancesFromFile')
+    store.dispatch('fetchInvidiousInstances').then(() => {
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        return
+      }
+      if (defaultInvidiousInstance.value === '') {
+        store.dispatch('setRandomCurrentInvidiousInstance')
+      }
+    })
 
-    // MeeTube Web - enable click handlers
-    document.addEventListener('click', handleClick)
-    document.addEventListener('auxclick', handleAuxClick)
+    store.dispatch('grabAllProfiles', t('Profile.All Channels')).then(() => {
+      store.dispatch('grabHistory')
+      store.dispatch('grabAllPlaylists')
+      store.dispatch('grabAllSubscriptions')
+      store.dispatch('grabSearchHistoryEntries')
+    })
 
-    dataReady.value = true
-
+    // 延遲檢查更新
     setTimeout(() => {
       checkForNewUpdates()
       checkForNewBlogPosts()
-    }, 500)
-  })
+    }, 2000)
+  }, 100)
 
   if (route.path === '/') {
     router.replace({ path: landingPage.value })
