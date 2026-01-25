@@ -230,19 +230,29 @@ onMounted(async () => {
   padding: 40px 20px;
 }
 
-/* 返回按鈕 */
+/* 返回按鈕 - 更明顯 */
 .back-to-home {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  color: #3ea6ff;
+  color: #fff;
+  background-color: #3f3f3f;
   text-decoration: none;
-  font-size: 14px;
-  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  transition: background-color 0.2s ease;
 }
 
 .back-to-home:hover {
-  text-decoration: underline;
+  background-color: #555;
+}
+
+.back-to-home:active {
+  background-color: #666;
 }
 
 /* 登入卡片 */

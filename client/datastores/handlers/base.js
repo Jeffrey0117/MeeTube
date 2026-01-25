@@ -93,59 +93,137 @@ class Settings {
 }
 
 class History {
+  // 取得當前用戶 ID（從 localStorage 讀取 session）
+  static _getCurrentUserId() {
+    try {
+      const session = localStorage.getItem('userSession')
+      if (session) {
+        const parsed = JSON.parse(session)
+        return parsed.userId || null
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null
+  }
+
   static find() {
-    return db.history.findAsync({}).sort({ timeWatched: -1 })
+    const userId = this._getCurrentUserId()
+    // 如果有用戶 ID，只查詢該用戶的紀錄
+    // 如果沒有（訪客模式），查詢沒有 userId 或 userId 為 null 的紀錄
+    const query = userId
+      ? { userId }
+      : { $or: [{ userId: null }, { userId: { $exists: false } }] }
+    return db.history.findAsync(query).sort({ timeWatched: -1 })
   }
 
   static upsert(record) {
-    return db.history.updateAsync({ videoId: record.videoId }, record, { upsert: true })
+    const userId = this._getCurrentUserId()
+    // 加入 userId 到紀錄
+    const recordWithUser = { ...record, userId }
+    return db.history.updateAsync(
+      { videoId: record.videoId, userId },
+      recordWithUser,
+      { upsert: true }
+    )
   }
 
   static async overwrite(records) {
-    await db.history.removeAsync({}, { multi: true })
+    const userId = this._getCurrentUserId()
+    // 只刪除當前用戶的紀錄
+    const query = userId
+      ? { userId }
+      : { $or: [{ userId: null }, { userId: { $exists: false } }] }
+    await db.history.removeAsync(query, { multi: true })
 
-    await db.history.insertAsync(records)
+    // 加入 userId 到所有紀錄
+    const recordsWithUser = records.map(r => ({ ...r, userId }))
+    await db.history.insertAsync(recordsWithUser)
   }
 
   static updateWatchProgress(videoId, watchProgress) {
-    return db.history.updateAsync({ videoId }, { $set: { watchProgress } }, { upsert: true })
+    const userId = this._getCurrentUserId()
+    return db.history.updateAsync(
+      { videoId, userId },
+      { $set: { watchProgress } },
+      { upsert: true }
+    )
   }
 
   static updateLastViewedPlaylist(videoId, lastViewedPlaylistId, lastViewedPlaylistType, lastViewedPlaylistItemId) {
-    return db.history.updateAsync({ videoId }, { $set: { lastViewedPlaylistId, lastViewedPlaylistType, lastViewedPlaylistItemId } }, { upsert: true })
+    const userId = this._getCurrentUserId()
+    return db.history.updateAsync(
+      { videoId, userId },
+      { $set: { lastViewedPlaylistId, lastViewedPlaylistType, lastViewedPlaylistItemId } },
+      { upsert: true }
+    )
   }
 
   static delete(videoId) {
-    return db.history.removeAsync({ videoId })
+    const userId = this._getCurrentUserId()
+    return db.history.removeAsync({ videoId, userId })
   }
 
   static deleteAll() {
-    return db.history.removeAsync({}, { multi: true })
+    const userId = this._getCurrentUserId()
+    const query = userId
+      ? { userId }
+      : { $or: [{ userId: null }, { userId: { $exists: false } }] }
+    return db.history.removeAsync(query, { multi: true })
   }
 }
 
 class Profiles {
+  // 取得當前用戶 ID
+  static _getCurrentUserId() {
+    try {
+      const session = localStorage.getItem('userSession')
+      if (session) {
+        const parsed = JSON.parse(session)
+        return parsed.userId || null
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null
+  }
+
+  static _getUserQuery() {
+    const userId = this._getCurrentUserId()
+    return userId
+      ? { userId }
+      : { $or: [{ userId: null }, { userId: { $exists: false } }] }
+  }
+
   static create(profile) {
-    return db.profiles.insertAsync(profile)
+    const userId = this._getCurrentUserId()
+    return db.profiles.insertAsync({ ...profile, userId })
   }
 
   static find() {
-    return db.profiles.findAsync({})
+    return db.profiles.findAsync(this._getUserQuery())
   }
 
   static upsert(profile) {
-    return db.profiles.updateAsync({ _id: profile._id }, profile, { upsert: true })
+    const userId = this._getCurrentUserId()
+    const profileWithUser = { ...profile, userId }
+    return db.profiles.updateAsync(
+      { _id: profile._id, ...this._getUserQuery() },
+      profileWithUser,
+      { upsert: true }
+    )
   }
 
   static addChannelToProfiles(channel, profileIds) {
+    const userQuery = this._getUserQuery()
     if (profileIds.length === 1) {
       return db.profiles.updateAsync(
-        { _id: profileIds[0] },
+        { _id: profileIds[0], ...userQuery },
         { $push: { subscriptions: channel } }
       )
     } else {
       return db.profiles.updateAsync(
-        { _id: { $in: profileIds } },
+        { _id: { $in: profileIds }, ...userQuery },
         { $push: { subscriptions: channel } },
         { multi: true }
       )
@@ -153,14 +231,15 @@ class Profiles {
   }
 
   static removeChannelFromProfiles(channelId, profileIds) {
+    const userQuery = this._getUserQuery()
     if (profileIds.length === 1) {
       return db.profiles.updateAsync(
-        { _id: profileIds[0] },
+        { _id: profileIds[0], ...userQuery },
         { $pull: { subscriptions: { id: channelId } } }
       )
     } else {
       return db.profiles.updateAsync(
-        { _id: { $in: profileIds } },
+        { _id: { $in: profileIds }, ...userQuery },
         { $pull: { subscriptions: { id: channelId } } },
         { multi: true }
       )
@@ -168,26 +247,59 @@ class Profiles {
   }
 
   static delete(id) {
-    return db.profiles.removeAsync({ _id: id })
+    return db.profiles.removeAsync({ _id: id, ...this._getUserQuery() })
   }
 }
 
 class Playlists {
+  // 取得當前用戶 ID（從 localStorage 讀取 session）
+  static _getCurrentUserId() {
+    try {
+      const session = localStorage.getItem('userSession')
+      if (session) {
+        const parsed = JSON.parse(session)
+        return parsed.userId || null
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null
+  }
+
+  static _getUserQuery() {
+    const userId = this._getCurrentUserId()
+    return userId
+      ? { userId }
+      : { $or: [{ userId: null }, { userId: { $exists: false } }] }
+  }
+
   static create(playlists) {
-    return db.playlists.insertAsync(playlists)
+    const userId = this._getCurrentUserId()
+    // 支援單一或多個 playlist
+    if (Array.isArray(playlists)) {
+      const playlistsWithUser = playlists.map(p => ({ ...p, userId }))
+      return db.playlists.insertAsync(playlistsWithUser)
+    }
+    return db.playlists.insertAsync({ ...playlists, userId })
   }
 
   static find() {
-    return db.playlists.findAsync({})
+    return db.playlists.findAsync(this._getUserQuery())
   }
 
   static upsert(playlist) {
-    return db.playlists.updateAsync({ _id: playlist._id }, { $set: playlist }, { upsert: true })
+    const userId = this._getCurrentUserId()
+    const playlistWithUser = { ...playlist, userId }
+    return db.playlists.updateAsync(
+      { _id: playlist._id, ...this._getUserQuery() },
+      { $set: playlistWithUser },
+      { upsert: true }
+    )
   }
 
   static upsertVideoByPlaylistId(_id, lastUpdatedAt, videoData) {
     return db.playlists.updateAsync(
-      { _id },
+      { _id, ...this._getUserQuery() },
       {
         $push: { videos: videoData },
         $set: { lastUpdatedAt }
@@ -198,7 +310,7 @@ class Playlists {
 
   static upsertVideosByPlaylistId(_id, lastUpdatedAt, videos) {
     return db.playlists.updateAsync(
-      { _id },
+      { _id, ...this._getUserQuery() },
       {
         $push: { videos: { $each: videos } },
         $set: { lastUpdatedAt }
@@ -208,13 +320,14 @@ class Playlists {
   }
 
   static delete(_id) {
-    return db.playlists.removeAsync({ _id, protected: { $ne: true } })
+    return db.playlists.removeAsync({ _id, ...this._getUserQuery(), protected: { $ne: true } })
   }
 
   static deleteVideoIdByPlaylistId(_id, lastUpdatedAt, videoId, playlistItemId) {
+    const userQuery = this._getUserQuery()
     if (playlistItemId != null) {
       return db.playlists.updateAsync(
-        { _id },
+        { _id, ...userQuery },
         {
           $pull: { videos: { playlistItemId } },
           $set: { lastUpdatedAt }
@@ -223,7 +336,7 @@ class Playlists {
       )
     } else if (videoId != null) {
       return db.playlists.updateAsync(
-        { _id },
+        { _id, ...userQuery },
         {
           $pull: { videos: { videoId } },
           $set: { lastUpdatedAt }
@@ -237,7 +350,7 @@ class Playlists {
 
   static deleteVideoIdsByPlaylistId(_id, lastUpdatedAt, playlistItemIds) {
     return db.playlists.updateAsync(
-      { _id },
+      { _id, ...this._getUserQuery() },
       {
         $pull: { videos: { playlistItemId: { $in: playlistItemIds } } },
         $set: { lastUpdatedAt }
@@ -248,42 +361,71 @@ class Playlists {
 
   static deleteAllVideosByPlaylistId(_id) {
     return db.playlists.updateAsync(
-      { _id },
+      { _id, ...this._getUserQuery() },
       { $set: { videos: [] } },
       { upsert: true }
     )
   }
 
   static deleteMultiple(ids) {
-    return db.playlists.removeAsync({ _id: { $in: ids }, protected: { $ne: true } })
+    return db.playlists.removeAsync({ _id: { $in: ids }, ...this._getUserQuery(), protected: { $ne: true } })
   }
 
   static deleteAll() {
-    return db.playlists.removeAsync({}, { multi: true })
+    return db.playlists.removeAsync(this._getUserQuery(), { multi: true })
   }
 }
 
 class SearchHistory {
+  // 取得當前用戶 ID
+  static _getCurrentUserId() {
+    try {
+      const session = localStorage.getItem('userSession')
+      if (session) {
+        const parsed = JSON.parse(session)
+        return parsed.userId || null
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null
+  }
+
+  static _getUserQuery() {
+    const userId = this._getCurrentUserId()
+    return userId
+      ? { userId }
+      : { $or: [{ userId: null }, { userId: { $exists: false } }] }
+  }
+
   static find() {
-    return db.searchHistory.findAsync({}).sort({ lastUpdatedAt: -1 })
+    return db.searchHistory.findAsync(this._getUserQuery()).sort({ lastUpdatedAt: -1 })
   }
 
   static upsert(searchHistoryEntry) {
-    return db.searchHistory.updateAsync({ _id: searchHistoryEntry._id }, searchHistoryEntry, { upsert: true })
+    const userId = this._getCurrentUserId()
+    const entryWithUser = { ...searchHistoryEntry, userId }
+    return db.searchHistory.updateAsync(
+      { _id: searchHistoryEntry._id, ...this._getUserQuery() },
+      entryWithUser,
+      { upsert: true }
+    )
   }
 
   static async overwrite(records) {
-    await db.searchHistory.removeAsync({}, { multi: true })
+    const userId = this._getCurrentUserId()
+    await db.searchHistory.removeAsync(this._getUserQuery(), { multi: true })
 
-    await db.searchHistory.insertAsync(records)
+    const recordsWithUser = records.map(r => ({ ...r, userId }))
+    await db.searchHistory.insertAsync(recordsWithUser)
   }
 
   static delete(_id) {
-    return db.searchHistory.removeAsync({ _id: _id })
+    return db.searchHistory.removeAsync({ _id, ...this._getUserQuery() })
   }
 
   static deleteAll() {
-    return db.searchHistory.removeAsync({}, { multi: true })
+    return db.searchHistory.removeAsync(this._getUserQuery(), { multi: true })
   }
 }
 
