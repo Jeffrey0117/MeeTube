@@ -473,12 +473,33 @@ router.get('/channels/:id/:subResource', async (req, res) => {
   }
 })
 
-// Trending / Popular
+// Trending / Popular cache (5 minutes TTL - balances freshness with performance)
+let popularCache = {
+  data: null,
+  timestamp: 0,
+  ttl: 5 * 60 * 1000 // 5 minutes
+}
+
 router.get(['/trending', '/popular'], async (req, res) => {
+  // Check cache first
+  const now = Date.now()
+  if (popularCache.data && (now - popularCache.timestamp) < popularCache.ttl) {
+    console.log('[TRENDING] Serving from cache')
+    res.set('X-Cache', 'HIT')
+    return res.json(popularCache.data)
+  }
+
   try {
     const innertube = getInnertube()
     const trending = await innertube.getTrending()
     const converted = convertSearchResults(trending.videos || [])
+
+    // Update cache
+    popularCache.data = converted
+    popularCache.timestamp = now
+    console.log(`[TRENDING] Cached ${converted.length} videos`)
+
+    res.set('X-Cache', 'MISS')
     res.json(converted)
   } catch (error) {
     console.log('[TRENDING] getTrending failed, using search fallback')
@@ -486,9 +507,21 @@ router.get(['/trending', '/popular'], async (req, res) => {
       const innertube = getInnertube()
       const searchResults = await innertube.search('music video 2024', { sort_by: 'view_count' })
       const converted = convertSearchResults(searchResults.results || [])
+
+      // Update cache even for fallback results
+      popularCache.data = converted
+      popularCache.timestamp = now
+
+      res.set('X-Cache', 'MISS')
       res.json(converted)
     } catch (searchError) {
       console.error('[TRENDING]', searchError.message)
+      // If we have stale cache, return it instead of error
+      if (popularCache.data) {
+        console.log('[TRENDING] Returning stale cache due to error')
+        res.set('X-Cache', 'STALE')
+        return res.json(popularCache.data)
+      }
       res.status(500).json({ error: 'Unable to fetch trending videos' })
     }
   }

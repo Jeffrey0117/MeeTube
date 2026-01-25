@@ -173,4 +173,74 @@
     width: 100% !important;
   }
 }
+
+/* ==========================================
+   FULLSCREEN SUBTITLE FIX (Unscoped)
+   Scoped styles don't work with :fullscreen
+   ========================================== */
+
+/* Allow subtitle to show above Shaka controls in fullscreen */
+.ftVideoPlayer:fullscreen,
+.ftVideoPlayer:-webkit-full-screen,
+.shaka-video-container:fullscreen,
+.shaka-video-container:-webkit-full-screen {
+  overflow: visible !important;
+}
+
+/* Ensure bilingual subtitle is visible in fullscreen */
+.ftVideoPlayer:fullscreen .bilingual-subtitle-overlay,
+.ftVideoPlayer:-webkit-full-screen .bilingual-subtitle-overlay,
+.shaka-video-container:fullscreen .bilingual-subtitle-overlay,
+.shaka-video-container:-webkit-full-screen .bilingual-subtitle-overlay {
+  position: absolute !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Mobile fullscreen subtitle positioning */
+@media screen and (max-width: 900px) {
+  .ftVideoPlayer:fullscreen .bilingual-subtitle-overlay,
+  .ftVideoPlayer:-webkit-full-screen .bilingual-subtitle-overlay {
+    top: auto !important;
+    bottom: 12% !important;
+  }
+
+  .ftVideoPlayer:fullscreen .subtitle-content,
+  .ftVideoPlayer:-webkit-full-screen .subtitle-content {
+    max-width: 92% !important;
+    padding: 6px 12px !important;
+  }
+
+  .ftVideoPlayer:fullscreen .subtitle-original,
+  .ftVideoPlayer:-webkit-full-screen .subtitle-original {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+  }
+
+  .ftVideoPlayer:fullscreen .subtitle-translation,
+  .ftVideoPlayer:-webkit-full-screen .subtitle-translation {
+    font-size: 16px !important;
+    line-height: 1.3 !important;
+  }
+}
+
+/* Landscape mode fullscreen */
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  .ftVideoPlayer:fullscreen .bilingual-subtitle-overlay,
+  .ftVideoPlayer:-webkit-full-screen .bilingual-subtitle-overlay {
+    bottom: 15% !important;
+  }
+
+  .ftVideoPlayer:fullscreen .subtitle-original,
+  .ftVideoPlayer:-webkit-full-screen .subtitle-original {
+    font-size: 16px !important;
+  }
+
+  .ftVideoPlayer:fullscreen .subtitle-translation,
+  .ftVideoPlayer:-webkit-full-screen .subtitle-translation {
+    font-size: 18px !important;
+  }
+}
 </style>

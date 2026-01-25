@@ -835,4 +835,60 @@
   }
 }
 
+/* ==========================================
+   FULLSCREEN MODE: Ensure subtitles visible
+   ========================================== */
+
+/* Allow subtitles to show in fullscreen (override overflow: hidden) */
+.ftVideoPlayer:fullscreen,
+.ftVideoPlayer:-webkit-full-screen,
+.ftVideoPlayer:-moz-full-screen,
+.ftVideoPlayer:-ms-fullscreen {
+  overflow: visible !important;
+}
+
+/* Ensure bilingual subtitle overlay is visible in fullscreen */
+.ftVideoPlayer:fullscreen :deep(.bilingual-subtitle-overlay),
+.ftVideoPlayer:-webkit-full-screen :deep(.bilingual-subtitle-overlay) {
+  position: absolute !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+/* iOS Safari fullscreen mode (video element goes fullscreen) */
+video::-webkit-media-text-track-container {
+  z-index: 2147483640 !important;
+}
+
+/* Mobile fullscreen: larger subtitle text for readability */
+@media screen and (max-width: 900px) {
+  .ftVideoPlayer:fullscreen :deep(.bilingual-subtitle-overlay),
+  .ftVideoPlayer:-webkit-full-screen :deep(.bilingual-subtitle-overlay) {
+    /* Position near bottom but above controls */
+    top: auto !important;
+    bottom: 12% !important;
+  }
+
+  .ftVideoPlayer:fullscreen :deep(.subtitle-content),
+  .ftVideoPlayer:-webkit-full-screen :deep(.subtitle-content) {
+    max-width: 92%;
+    padding: 6px 12px;
+  }
+
+  .ftVideoPlayer:fullscreen :deep(.subtitle-original),
+  .ftVideoPlayer:-webkit-full-screen :deep(.subtitle-original) {
+    font-size: 14px !important;
+    line-height: 1.3;
+  }
+
+  .ftVideoPlayer:fullscreen :deep(.subtitle-translation),
+  .ftVideoPlayer:-webkit-full-screen :deep(.subtitle-translation) {
+    font-size: 16px !important;
+    line-height: 1.3;
+  }
+}
+
 /* stylelint-enable liberty/use-logical-spec */

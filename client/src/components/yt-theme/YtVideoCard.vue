@@ -7,6 +7,8 @@
         :src="thumbnailUrl"
         :alt="video.title"
         loading="lazy"
+        decoding="async"
+        fetchpriority="low"
       />
       <span v-if="video.lengthSeconds" class="yt-duration">
         {{ formatDuration(video.lengthSeconds) }}
@@ -23,6 +25,9 @@
           v-show="!avatarError"
           :src="channelThumbnail"
           :alt="video.author"
+          loading="lazy"
+          decoding="async"
+          fetchpriority="low"
           @load="avatarError = false"
           @error="avatarError = true"
         />
@@ -61,24 +66,35 @@ export default {
     }
   },
   computed: {
+    isMobile() {
+      return window.innerWidth <= 680
+    },
     showFallback() {
       return !this.channelThumbnail || this.avatarError
     },
     thumbnailUrl() {
       if (this.video.videoThumbnails && this.video.videoThumbnails.length > 0) {
-        // Prefer higher quality thumbnails: maxres > high > medium > default
+        // Mobile: use medium quality (mqdefault ~320x180) to save bandwidth
+        // Desktop: use high quality (hqdefault ~480x360)
+        if (this.isMobile) {
+          const preferred = this.video.videoThumbnails.find(t =>
+            t.quality === 'medium' || t.quality === 'mqdefault'
+          ) || this.video.videoThumbnails.find(t =>
+            t.quality === 'default' || t.quality === 'sddefault'
+          )
+          return preferred?.url || this.video.videoThumbnails[0].url
+        }
+        // Desktop: prefer higher quality
         const preferred = this.video.videoThumbnails.find(t =>
-          t.quality === 'maxres' || t.quality === 'maxresdefault'
-        ) || this.video.videoThumbnails.find(t =>
           t.quality === 'high' || t.quality === 'hqdefault'
         ) || this.video.videoThumbnails.find(t =>
           t.quality === 'medium' || t.quality === 'mqdefault'
         )
         return preferred?.url || this.video.videoThumbnails[0].url
       }
-      // Fallback to direct YouTube URL
+      // Fallback to direct YouTube URL - use mqdefault for mobile
       if (this.video.videoId) {
-        return `/vi/${this.video.videoId}/hqdefault.jpg`
+        return `/vi/${this.video.videoId}/${this.isMobile ? 'mqdefault' : 'hqdefault'}.jpg`
       }
       return ''
     },

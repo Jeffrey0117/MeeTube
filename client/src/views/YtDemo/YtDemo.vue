@@ -28,8 +28,14 @@
         </template>
       </div>
 
+      <!-- Error State -->
+      <div v-if="errorMsg" class="yt-error">
+        {{ errorMsg }}
+        <button @click="fetchVideos" class="retry-btn">重試</button>
+      </div>
+
       <!-- Empty State -->
-      <div v-if="!isLoading && videos.length === 0" class="yt-empty">
+      <div v-if="!isLoading && !errorMsg && videos.length === 0" class="yt-empty">
         找不到影片
       </div>
     </div>
@@ -48,7 +54,8 @@ export default {
   data() {
     return {
       videos: [],
-      isLoading: true
+      isLoading: true,
+      errorMsg: ''
     }
   },
   async mounted() {
@@ -57,14 +64,32 @@ export default {
   methods: {
     async fetchVideos() {
       this.isLoading = true
+      this.errorMsg = ''
       try {
-        const response = await fetch('/api/v1/popular/')
+        console.log('[YtDemo] Fetching videos...')
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 15000) // 15秒超時
+
+        const response = await fetch('/api/v1/popular/', {
+          signal: controller.signal
+        })
+        clearTimeout(timeout)
+
+        console.log('[YtDemo] Response status:', response.status)
         if (response.ok) {
           const data = await response.json()
+          console.log('[YtDemo] Got', data.length, 'videos')
           this.videos = data.slice(0, 20)
+        } else {
+          this.errorMsg = `API 錯誤: ${response.status}`
         }
       } catch (e) {
-        console.error('Failed to fetch videos:', e)
+        console.error('[YtDemo] Failed to fetch videos:', e)
+        if (e.name === 'AbortError') {
+          this.errorMsg = '載入逾時，請重試'
+        } else {
+          this.errorMsg = `載入失敗: ${e.message}`
+        }
       }
       this.isLoading = false
     }
@@ -154,5 +179,23 @@ export default {
   text-align: center;
   padding: 32px;
   color: var(--tertiary-text-color, #606060);
+}
+
+.yt-error {
+  text-align: center;
+  padding: 32px;
+  color: #ff4444;
+  font-size: 16px;
+}
+
+.retry-btn {
+  margin-top: 16px;
+  padding: 8px 24px;
+  background: var(--primary-color, #f00);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
 }
 </style>

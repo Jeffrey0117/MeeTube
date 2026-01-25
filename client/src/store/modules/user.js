@@ -5,13 +5,18 @@
 
 import { DBUserHandlers } from '../../../datastores/handlers/index'
 
-// 簡易密碼雜湊函式（使用 Web Crypto API）
+// 簡易密碼雜湊函式（簡單 hash，僅用於本地比對）
 async function hashPassword(password) {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  // 簡單的字串 hash（不使用 Web Crypto，相容 HTTP 環境）
+  let hash = 0
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  // 加上 salt 讓 hash 更長
+  const salt = 'meetube-local-'
+  return salt + Math.abs(hash).toString(16).padStart(8, '0') + password.length.toString(16)
 }
 
 // 驗證密碼
@@ -331,15 +336,59 @@ const actions = {
     commit('SET_LOADING', true)
 
     try {
-      // 查詢用戶
-      const user = await DBUserHandlers.findByUsername(username.trim().toLowerCase())
-      if (!user) {
-        throw new Error('用戶名或密碼錯誤')
+      const trimmedUsername = username.trim().toLowerCase()
+
+      // 先嘗試伺服器端登入
+      let serverUser = null
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username: trimmedUsername, password })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            serverUser = data.user
+          }
+        }
+      } catch (e) {
+        // 伺服器不可用，繼續嘗試本地登入
       }
 
-      // 驗證密碼
-      const isValid = await verifyPassword(password, user.passwordHash)
-      if (!isValid) {
+      // 查詢本地用戶
+      let user = await DBUserHandlers.findByUsername(trimmedUsername)
+
+      // 如果伺服器登入成功但本地沒有用戶，建立本地用戶
+      if (serverUser && !user) {
+        const now = Date.now()
+        const passwordHash = await hashPassword(password)
+        user = {
+          _id: serverUser.id || generateUserId(),
+          username: trimmedUsername,
+          displayName: serverUser.username || trimmedUsername,
+          passwordHash,
+          avatar: 'default',
+          createdAt: now,
+          lastLoginAt: now,
+          stats: getDefaultStats(),
+          preferences: {}
+        }
+        await DBUserHandlers.create(user)
+      }
+
+      // 如果本地有用戶，驗證密碼
+      if (user && !serverUser) {
+        const isValid = await verifyPassword(password, user.passwordHash)
+        if (!isValid) {
+          throw new Error('用戶名或密碼錯誤')
+        }
+      }
+
+      // 都沒找到用戶
+      if (!user && !serverUser) {
         throw new Error('用戶名或密碼錯誤')
       }
 

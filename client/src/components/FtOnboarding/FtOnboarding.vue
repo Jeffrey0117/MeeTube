@@ -10,10 +10,10 @@
         class="onboarding-step"
       >
         <h1 class="onboarding-title">
-          {{ t('Onboarding.Welcome to FreeTube') }}
+          歡迎來到 MeeTube
         </h1>
         <p class="onboarding-subtitle">
-          {{ t('Onboarding.A private YouTube experience') }}
+          私密的 YouTube 觀看體驗
         </p>
 
         <div class="onboarding-options">
@@ -335,20 +335,9 @@ const recommendedChannels = computed(() => {
 })
 
 onMounted(() => {
-  // Initialize onboarding state
-  store.dispatch('initOnboarding')
-
-  // Check if first time user
-  const isFirstTime = store.getters.isFirstTimeUser
-
-  // Also check if user has any subscriptions
-  const subscriptions = store.getters.getAllSubscriptionsList || []
-  const hasNoSubscriptions = subscriptions.length === 0
-
-  // Show onboarding if first time OR has no subscriptions and hasn't completed onboarding
-  if (isFirstTime || (hasNoSubscriptions && !store.getters.getHasCompletedOnboarding)) {
-    showOnboarding.value = true
-  }
+  // MeeTube: Disable onboarding completely
+  // Users can access settings manually if needed
+  showOnboarding.value = false
 })
 
 function toggleInterest(interestId) {

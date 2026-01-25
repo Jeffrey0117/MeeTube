@@ -29,6 +29,7 @@ import YtCourseDetail from '../views/YtCourses/YtCourseDetail.vue'
 import YtChannel from '../views/YtChannel/YtChannel.vue'
 import YtSubscriptions from '../views/YtSubscriptions/YtSubscriptions.vue'
 import YtHistory from '../views/YtHistory/YtHistory.vue'
+import YtSettings from '../views/YtSettings/YtSettings.vue'
 
 // 會員系統相關頁面
 import Profile from '../views/Profile/Profile.vue'
@@ -338,7 +339,7 @@ const router = createRouter({
       meta: {
         title: '設定'
       },
-      component: YtDemo // TODO: Create dedicated settings page
+      component: YtSettings
     },
     // MeeTube Favorites
     {

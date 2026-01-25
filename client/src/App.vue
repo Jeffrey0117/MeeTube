@@ -126,7 +126,8 @@
       v-if="showProgressBar"
     />
     <MiniPlayer />
-    <FtOnboarding />
+    <!-- Only show onboarding for non-YT theme -->
+    <FtOnboarding v-if="!isYtTheme" />
   </div>
 </template>
 
@@ -163,8 +164,8 @@ const route = useRoute()
 const router = useRouter()
 const { locale, t } = useI18n()
 
-// Check if current route is YouTube theme
-const isYtTheme = computed(() => route.path.startsWith('/yt'))
+// MeeTube: 永遠使用 YT 主題（全屏佈局，無 FreeTube 外殼）
+const isYtTheme = computed(() => true)
 
 /** @type {import('vue').ComputedRef<boolean>} */
 const isSideNavOpen = computed(() => store.getters.getIsSideNavOpen)
@@ -203,6 +204,8 @@ onMounted(async () => {
   // 初始化用戶系統，恢復已登入用戶的 session
   try {
     await store.dispatch('user/initializeUser')
+    // 初始化收藏同步
+    await store.dispatch('favorites/initFavorites')
   } catch (error) {
     console.error('Failed to initialize user session:', error)
   }
@@ -311,9 +314,8 @@ const updateBannerMessage = computed(() => {
 })
 
 async function checkForNewUpdates() {
-  if (!checkForUpdates.value) {
-    return
-  }
+  // MeeTube: 停用版本更新檢查
+  return
 
   try {
     const response = await fetch('https://api.github.com/repos/freetubeapp/freetube/releases?per_page=1')

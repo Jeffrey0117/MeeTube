@@ -1,10 +1,16 @@
 <template>
-  <div class="login-page">
-    <div class="login-card">
+  <YtLayout>
+    <div class="login-page">
+      <div class="login-card">
+      <!-- 返回按鈕 -->
+      <router-link to="/yt" class="back-to-home">
+        <font-awesome-icon :icon="['fas', 'arrow-left']" />
+        <span>返回首頁</span>
+      </router-link>
       <!-- 標題 -->
       <div class="login-header">
         <h1 class="login-title">{{ $t('User.Login') }}</h1>
-        <p class="login-subtitle">{{ $t('User.Welcome back to FreeTube') }}</p>
+        <p class="login-subtitle">歡迎回到 MeeTube</p>
       </div>
 
       <!-- 登入表單 -->
@@ -121,8 +127,9 @@
           </button>
         </div>
       </div>
+      </div>
     </div>
-  </div>
+  </YtLayout>
 </template>
 
 <script setup>
@@ -140,6 +147,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import FtUserAvatar from '../../components/ft-user-avatar/ft-user-avatar.vue'
+import { YtLayout } from '../../components/yt-theme'
 
 const router = useRouter()
 const store = useStore()
@@ -213,14 +221,28 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 頁面容器 */
+/* 頁面容器 - MeeTube 風格 */
 .login-page {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background-color: var(--bg-color);
+  min-height: calc(100vh - 120px);
+  padding: 40px 20px;
+}
+
+/* 返回按鈕 */
+.back-to-home {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3ea6ff;
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.back-to-home:hover {
+  text-decoration: underline;
 }
 
 /* 登入卡片 */
@@ -228,9 +250,9 @@ onMounted(async () => {
   width: 100%;
   max-width: 420px;
   padding: 32px;
-  background-color: var(--card-bg-color);
+  background-color: #212121;
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* 標題區域 */
@@ -242,13 +264,13 @@ onMounted(async () => {
 .login-title {
   font-size: 28px;
   font-weight: 700;
-  color: var(--primary-text-color);
+  color: #fff;
   margin: 0 0 8px 0;
 }
 
 .login-subtitle {
   font-size: 14px;
-  color: var(--secondary-text-color);
+  color: #aaa;
   margin: 0;
 }
 
@@ -268,7 +290,7 @@ onMounted(async () => {
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--primary-text-color);
+  color: #fff;
 }
 
 .input-wrapper {
@@ -280,7 +302,7 @@ onMounted(async () => {
 .input-icon {
   position: absolute;
   left: 14px;
-  color: var(--secondary-text-color);
+  color: #888;
   font-size: 16px;
   pointer-events: none;
 }
@@ -288,21 +310,21 @@ onMounted(async () => {
 .form-input {
   width: 100%;
   padding: 14px 14px 14px 44px;
-  border: 2px solid var(--scrollbar-color);
+  border: 1px solid #3f3f3f;
   border-radius: 10px;
-  background-color: var(--bg-color);
-  color: var(--primary-text-color);
+  background-color: #181818;
+  color: #fff;
   font-size: 15px;
   transition: border-color 0.2s ease;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #3ea6ff;
 }
 
 .form-input::placeholder {
-  color: var(--secondary-text-color);
+  color: #717171;
 }
 
 .toggle-password {
@@ -311,13 +333,13 @@ onMounted(async () => {
   padding: 8px;
   border: none;
   background: transparent;
-  color: var(--secondary-text-color);
+  color: #888;
   cursor: pointer;
   font-size: 16px;
 }
 
 .toggle-password:hover {
-  color: var(--primary-text-color);
+  color: #fff;
 }
 
 /* 錯誤訊息 */
@@ -337,8 +359,8 @@ onMounted(async () => {
   padding: 14px;
   border: none;
   border-radius: 10px;
-  background-color: var(--primary-color);
-  color: var(--text-with-main-color);
+  background-color: #3ea6ff;
+  color: #0f0f0f;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -387,13 +409,13 @@ onMounted(async () => {
   content: '';
   flex: 1;
   height: 1px;
-  background-color: var(--scrollbar-color);
+  background-color: #3f3f3f;
 }
 
 .divider span {
   padding: 0 16px;
   font-size: 13px;
-  color: var(--secondary-text-color);
+  color: #888;
 }
 
 /* 訪客按鈕 */
@@ -404,10 +426,10 @@ onMounted(async () => {
   gap: 10px;
   width: 100%;
   padding: 12px;
-  border: 2px solid var(--scrollbar-color);
+  border: 1px solid #3f3f3f;
   border-radius: 10px;
   background: transparent;
-  color: var(--primary-text-color);
+  color: #fff;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -415,8 +437,8 @@ onMounted(async () => {
 }
 
 .guest-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+  border-color: #3ea6ff;
+  color: #3ea6ff;
 }
 
 /* 註冊連結 */
@@ -424,11 +446,11 @@ onMounted(async () => {
   text-align: center;
   margin-top: 24px;
   font-size: 14px;
-  color: var(--secondary-text-color);
+  color: #888;
 }
 
 .register-link a {
-  color: var(--primary-color);
+  color: #3ea6ff;
   text-decoration: none;
   font-weight: 500;
 }
@@ -441,12 +463,12 @@ onMounted(async () => {
 .existing-accounts {
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid var(--scrollbar-color);
+  border-top: 1px solid #3f3f3f;
 }
 
 .accounts-title {
   font-size: 13px;
-  color: var(--secondary-text-color);
+  color: #888;
   text-align: center;
   margin-bottom: 12px;
 }
@@ -463,18 +485,18 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid var(--scrollbar-color);
+  border: 1px solid #3f3f3f;
   border-radius: 24px;
   background: transparent;
-  color: var(--primary-text-color);
+  color: #fff;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .account-item:hover {
-  border-color: var(--primary-color);
-  background-color: var(--accent-color-opacity2);
+  border-color: #3ea6ff;
+  background-color: rgba(62, 166, 255, 0.1);
 }
 
 .account-name {

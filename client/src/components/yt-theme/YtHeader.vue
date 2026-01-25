@@ -37,16 +37,19 @@
       </button>
 
       <!-- Search Suggestions Dropdown -->
-      <div v-if="showSuggestions && suggestions.length > 0" class="yt-suggestions">
+      <div v-if="showSuggestions && displaySuggestions.length > 0" class="yt-suggestions">
         <div
-          v-for="(suggestion, index) in suggestions"
+          v-for="(suggestion, index) in displaySuggestions"
           :key="index"
           class="yt-suggestion-item"
           :class="{ 'is-selected': index === selectedIndex }"
           @mousedown.prevent="selectSuggestion(suggestion)"
         >
-          <font-awesome-icon :icon="['fas', 'search']" class="yt-suggestion-icon" />
-          <span>{{ suggestion }}</span>
+          <font-awesome-icon
+            :icon="['fas', suggestion.isHistory ? 'clock-rotate-left' : 'search']"
+            class="yt-suggestion-icon"
+          />
+          <span>{{ suggestion.text }}</span>
         </div>
       </div>
     </div>
@@ -67,9 +70,7 @@
       <button class="yt-icon-btn yt-desktop-only">
         <font-awesome-icon :icon="['fas', 'bell']" />
       </button>
-      <div class="yt-avatar">
-        <span>{{ userInitial }}</span>
-      </div>
+      <YtUserMenu />
     </div>
 
     <!-- Mobile Search Overlay -->
@@ -95,8 +96,14 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
+import YtUserMenu from './YtUserMenu.vue'
+
 export default {
   name: 'YtHeader',
+  components: {
+    YtUserMenu
+  },
   data() {
     return {
       searchQuery: '',
@@ -105,15 +112,30 @@ export default {
       selectedIndex: -1,
       debounceTimer: null,
       isSearchFocused: false,
-      mobileSearchOpen: false
+      mobileSearchOpen: false,
+      isHistoryMode: false // 是否顯示搜尋記錄
     }
   },
   computed: {
-    userInitial() {
-      return 'U'
+    ...mapGetters(['getLatestSearchHistoryNames', 'getLatestMatchingSearchHistoryNames']),
+
+    // 合併顯示的建議列表
+    displaySuggestions() {
+      if (this.isHistoryMode) {
+        // 顯示搜尋記錄
+        return this.suggestions.map(s => ({ text: s, isHistory: true }))
+      }
+      // 顯示 API 建議
+      return this.suggestions.map(s => ({ text: s, isHistory: false }))
     }
   },
+  mounted() {
+    // 載入搜尋記錄
+    this.grabSearchHistoryEntries()
+  },
   methods: {
+    ...mapActions(['grabSearchHistoryEntries', 'updateSearchHistoryEntry']),
+
     toggleSidebar() {
       this.$emit('toggle-sidebar')
     },
@@ -121,6 +143,10 @@ export default {
     handleFocus() {
       this.isSearchFocused = true
       this.showSuggestions = true
+      // 如果輸入框為空，顯示搜尋記錄
+      if (!this.searchQuery.trim()) {
+        this.showSearchHistory()
+      }
     },
 
     handleBlur() {
@@ -135,7 +161,20 @@ export default {
       if (this.mobileSearchOpen) {
         this.$nextTick(() => {
           this.$refs.mobileSearchInput?.focus()
+          // 顯示搜尋記錄
+          if (!this.searchQuery.trim()) {
+            this.showSearchHistory()
+          }
         })
+      }
+    },
+
+    showSearchHistory() {
+      const history = this.getLatestSearchHistoryNames || []
+      if (history.length > 0) {
+        this.suggestions = history.slice(0, 8)
+        this.isHistoryMode = true
+        this.showSuggestions = true
       }
     },
 
@@ -144,10 +183,20 @@ export default {
       this.selectedIndex = -1
 
       if (!this.searchQuery.trim()) {
-        this.suggestions = []
+        // 輸入框清空時顯示搜尋記錄
+        this.showSearchHistory()
         return
       }
 
+      // 先顯示匹配的搜尋記錄
+      const matchingHistory = this.getLatestMatchingSearchHistoryNames(this.searchQuery)
+      if (matchingHistory.length > 0) {
+        this.suggestions = matchingHistory.slice(0, 4)
+        this.isHistoryMode = true
+        this.showSuggestions = true
+      }
+
+      // 然後獲取 API 建議
       this.debounceTimer = setTimeout(() => {
         this.fetchSuggestions()
       }, 200)
@@ -160,36 +209,48 @@ export default {
           const data = await response.json()
           if (data && data.suggestions) {
             this.suggestions = data.suggestions.slice(0, 8)
+            this.isHistoryMode = false
           }
         }
       } catch (e) {
-        console.error('Failed to fetch suggestions:', e)
-        this.suggestions = []
+        // 保持搜尋記錄結果
       }
     },
 
     navigateSuggestion(direction) {
-      if (this.suggestions.length === 0) return
+      if (this.displaySuggestions.length === 0) return
 
       this.selectedIndex += direction
       if (this.selectedIndex < 0) {
-        this.selectedIndex = this.suggestions.length - 1
-      } else if (this.selectedIndex >= this.suggestions.length) {
+        this.selectedIndex = this.displaySuggestions.length - 1
+      } else if (this.selectedIndex >= this.displaySuggestions.length) {
         this.selectedIndex = 0
       }
 
-      this.searchQuery = this.suggestions[this.selectedIndex]
+      this.searchQuery = this.displaySuggestions[this.selectedIndex].text
     },
 
     selectSuggestion(suggestion) {
-      this.searchQuery = suggestion
+      this.searchQuery = suggestion.text
       this.showSuggestions = false
       this.handleSearch()
+    },
+
+    // 儲存搜尋記錄
+    saveToHistory(query) {
+      if (query && query.trim()) {
+        this.updateSearchHistoryEntry({
+          _id: query.trim(),
+          lastUpdatedAt: Date.now()
+        })
+      }
     },
 
     handleSearch() {
       if (this.searchQuery.trim()) {
         this.showSuggestions = false
+        // 儲存到搜尋記錄
+        this.saveToHistory(this.searchQuery.trim())
         this.$router.push({
           path: '/yt/search/' + encodeURIComponent(this.searchQuery.trim())
         })
@@ -199,6 +260,8 @@ export default {
     handleMobileSearch() {
       if (this.searchQuery.trim()) {
         this.mobileSearchOpen = false
+        // 儲存到搜尋記錄
+        this.saveToHistory(this.searchQuery.trim())
         this.$router.push({
           path: '/yt/search/' + encodeURIComponent(this.searchQuery.trim())
         })
@@ -436,20 +499,6 @@ export default {
   display: none;
 }
 
-.yt-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: #3b82f6;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  margin-left: 8px;
-}
-
 /* Mobile Search Overlay */
 .yt-mobile-search-overlay {
   position: fixed;
@@ -560,12 +609,6 @@ export default {
     width: 36px;
     height: 36px;
     font-size: 16px;
-  }
-
-  .yt-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
   }
 }
 </style>

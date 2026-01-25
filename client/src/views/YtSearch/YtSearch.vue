@@ -44,6 +44,8 @@
                   :alt="item.title"
                   class="w-full h-full object-cover"
                   loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
                 />
                 <!-- Watched indicator -->
                 <div v-if="isWatched(item.videoId)" class="absolute top-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded flex items-center gap-1">
@@ -161,7 +163,7 @@ export default {
       isLoading: false,
       isLoadingMore: false,
       hasMore: false,
-      sidebarOpen: true
+      sidebarOpen: false
     }
   },
   computed: {

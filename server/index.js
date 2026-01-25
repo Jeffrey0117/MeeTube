@@ -14,7 +14,9 @@ import dotenv from 'dotenv'
 import apiRoutes from './routes/api.js'
 import proxyRoutes from './routes/proxy.js'
 import authRoutes from './routes/auth.js'
+import favoritesRoutes from './routes/favorites.js'
 import { initYouTube } from './services/youtube.js'
+import { createUser, getUserByUsername } from './services/database.js'
 
 // Load environment variables
 dotenv.config()
@@ -25,10 +27,12 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
-// Security middleware
+// Security middleware (寬鬆設定，方便開發和手機測試)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false, // Disable for video streaming
+  hsts: false, // 關閉 HSTS，避免強制 HTTPS
+  crossOriginOpenerPolicy: false,
 }))
 
 // CORS configuration
@@ -63,6 +67,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/v1', apiRoutes)
 app.use('/api', apiRoutes)  // Also mount at /api for compatibility
 app.use('/auth', authRoutes)
+app.use('/api/favorites', favoritesRoutes)
 
 // Proxy routes (thumbnails, video streaming)
 app.use('/', proxyRoutes)
@@ -84,10 +89,29 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message })
 })
 
+// Create default user if not exists
+async function ensureDefaultUser() {
+  const defaultUsername = 'jeff'
+  const defaultPassword = 'meetube2025'
+
+  try {
+    const existing = await getUserByUsername(defaultUsername)
+    if (!existing) {
+      await createUser(defaultUsername, defaultPassword)
+      console.log('[AUTH] Default user created: jeff')
+    }
+  } catch (error) {
+    if (error.message !== 'Username already exists') {
+      console.error('[AUTH] Failed to create default user:', error.message)
+    }
+  }
+}
+
 // Initialize and start server
 async function start() {
   try {
     await initYouTube()
+    await ensureDefaultUser()
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log('')

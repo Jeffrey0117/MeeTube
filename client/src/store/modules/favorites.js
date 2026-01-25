@@ -1,6 +1,6 @@
 /**
  * Favorites Store Module
- * 管理收藏影片功能
+ * 管理收藏影片功能 - 支援伺服器同步
  */
 
 const STORAGE_KEY = 'yt-favorites'
@@ -26,7 +26,8 @@ function saveToStorage(favorites) {
 }
 
 const state = {
-  favorites: loadFromStorage()
+  favorites: loadFromStorage(),
+  synced: false
 }
 
 const getters = {
@@ -40,10 +41,40 @@ const getters = {
 }
 
 const actions = {
-  addFavorite({ commit, state }, video) {
+  /**
+   * 初始化並與伺服器同步
+   */
+  async initFavorites({ commit, state, rootGetters }) {
+    const isLoggedIn = rootGetters['user/isLoggedIn']
+
+    if (isLoggedIn && !state.synced) {
+      try {
+        // 嘗試與伺服器同步
+        const localFavorites = state.favorites
+        const response = await fetch('/api/favorites/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ favorites: localFavorites })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.favorites) {
+            commit('SET_FAVORITES', data.favorites)
+            saveToStorage(data.favorites)
+            commit('SET_SYNCED', true)
+          }
+        }
+      } catch (e) {
+        console.error('[Favorites] Sync failed:', e)
+      }
+    }
+  },
+
+  async addFavorite({ commit, state, rootGetters }, video) {
     // 檢查是否已收藏
     if (state.favorites.some(f => f.videoId === video.videoId)) {
-      console.log('[Favorites] Already favorited:', video.videoId)
       return false
     }
 
@@ -51,21 +82,55 @@ const actions = {
       videoId: video.videoId,
       title: video.title,
       author: video.author,
+      authorId: video.authorId,
       thumbnail: video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/mqdefault.jpg`,
-      duration: video.duration || video.lengthSeconds || 0,
+      lengthSeconds: video.duration || video.lengthSeconds || 0,
       addedAt: Date.now()
     }
 
     commit('ADD_FAVORITE', favorite)
     saveToStorage(state.favorites)
-    console.log('[Favorites] Added:', video.videoId)
+
+    // 同步到伺服器
+    const isLoggedIn = rootGetters['user/isLoggedIn']
+    if (isLoggedIn) {
+      try {
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            videoId: favorite.videoId,
+            title: favorite.title,
+            author: favorite.author,
+            authorId: favorite.authorId,
+            lengthSeconds: favorite.lengthSeconds
+          })
+        })
+      } catch (e) {
+        console.error('[Favorites] Server sync failed:', e)
+      }
+    }
+
     return true
   },
 
-  removeFavorite({ commit, state }, videoId) {
+  async removeFavorite({ commit, state, rootGetters }, videoId) {
     commit('REMOVE_FAVORITE', videoId)
     saveToStorage(state.favorites)
-    console.log('[Favorites] Removed:', videoId)
+
+    // 同步到伺服器
+    const isLoggedIn = rootGetters['user/isLoggedIn']
+    if (isLoggedIn) {
+      try {
+        await fetch(`/api/favorites/${videoId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+      } catch (e) {
+        console.error('[Favorites] Server delete failed:', e)
+      }
+    }
   },
 
   toggleFavorite({ dispatch, getters }, video) {
@@ -81,13 +146,36 @@ const actions = {
   clearAllFavorites({ commit }) {
     commit('CLEAR_FAVORITES')
     saveToStorage([])
-    console.log('[Favorites] Cleared all')
+  },
+
+  /**
+   * 從伺服器重新載入收藏
+   */
+  async refreshFromServer({ commit, rootGetters }) {
+    const isLoggedIn = rootGetters['user/isLoggedIn']
+    if (!isLoggedIn) return
+
+    try {
+      const response = await fetch('/api/favorites', {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.favorites) {
+          commit('SET_FAVORITES', data.favorites)
+          saveToStorage(data.favorites)
+        }
+      }
+    } catch (e) {
+      console.error('[Favorites] Refresh failed:', e)
+    }
   }
 }
 
 const mutations = {
   ADD_FAVORITE(state, favorite) {
-    state.favorites.unshift(favorite) // 新的在前面
+    state.favorites.unshift(favorite)
   },
 
   REMOVE_FAVORITE(state, videoId) {
@@ -96,6 +184,14 @@ const mutations = {
 
   CLEAR_FAVORITES(state) {
     state.favorites = []
+  },
+
+  SET_FAVORITES(state, favorites) {
+    state.favorites = favorites
+  },
+
+  SET_SYNCED(state, synced) {
+    state.synced = synced
   }
 }
 
