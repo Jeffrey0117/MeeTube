@@ -3,6 +3,8 @@
  * localStorage-based cache for translated subtitles
  */
 
+import { cacheLogger as logger } from './logger'
+
 const CACHE_KEY_PREFIX = 'bilingual_cache_'
 const CACHE_VERSION = 1
 const MAX_CACHE_AGE = 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -44,11 +46,11 @@ export function getCachedTranslations(videoId, lang) {
     // Check expiry
     if (Date.now() > data.expiresAt) {
       localStorage.removeItem(key)
-      console.log(`[SUBTITLE-CACHE] Expired: ${videoId}`)
+      logger.debug(`Expired: ${videoId}`)
       return null
     }
 
-    console.log(`[SUBTITLE-CACHE] HIT: ${videoId} (${data.subtitles.length} subtitles)`)
+    logger.debug(`HIT: ${videoId} (${data.subtitles.length} subtitles)`)
 
     // Update last accessed time
     data.lastAccessed = Date.now()
@@ -56,7 +58,7 @@ export function getCachedTranslations(videoId, lang) {
 
     return data.subtitles
   } catch (error) {
-    console.error('[SUBTITLE-CACHE] Get error:', error)
+    logger.error('Get error:', error)
     return null
   }
 }
@@ -78,7 +80,7 @@ export function setCachedTranslations(videoId, lang, subtitles) {
     const translatedCount = subtitles.filter(s => s.translation).length
     if (translatedCount < subtitles.length * 0.9) {
       // Don't cache if less than 90% translated
-      console.log(`[SUBTITLE-CACHE] Not caching: only ${translatedCount}/${subtitles.length} translated`)
+      logger.debug(`Not caching: only ${translatedCount}/${subtitles.length} translated`)
       return
     }
 
@@ -94,12 +96,12 @@ export function setCachedTranslations(videoId, lang, subtitles) {
     }
 
     localStorage.setItem(key, JSON.stringify(data))
-    console.log(`[SUBTITLE-CACHE] SET: ${videoId} (${subtitles.length} subtitles)`)
+    logger.debug(`SET: ${videoId} (${subtitles.length} subtitles)`)
 
     // Clean up old entries if we have too many
     cleanupOldEntries()
   } catch (error) {
-    console.error('[SUBTITLE-CACHE] Set error:', error)
+    logger.error('Set error:', error)
     // If storage is full, try to clear old entries
     if (error.name === 'QuotaExceededError') {
       clearOldCache()
@@ -149,10 +151,10 @@ export function clearOldCache() {
     keysToRemove.forEach(key => localStorage.removeItem(key))
 
     if (keysToRemove.length > 0) {
-      console.log(`[SUBTITLE-CACHE] Cleared ${keysToRemove.length} expired entries`)
+      logger.debug(`Cleared ${keysToRemove.length} expired entries`)
     }
   } catch (error) {
-    console.error('[SUBTITLE-CACHE] Clear error:', error)
+    logger.error('Clear error:', error)
   }
 }
 
@@ -182,10 +184,10 @@ function cleanupOldEntries() {
       entries.sort((a, b) => a.lastAccessed - b.lastAccessed)
       const toRemove = entries.slice(0, entries.length - MAX_CACHE_ENTRIES)
       toRemove.forEach(entry => localStorage.removeItem(entry.key))
-      console.log(`[SUBTITLE-CACHE] Cleaned up ${toRemove.length} old entries`)
+      logger.debug(`Cleaned up ${toRemove.length} old entries`)
     }
   } catch (error) {
-    console.error('[SUBTITLE-CACHE] Cleanup error:', error)
+    logger.error('Cleanup error:', error)
   }
 }
 

@@ -4,7 +4,7 @@
       v-for="toast in toasts"
       :key="toast.id"
       class="toast"
-      :class="{ closed: !toast.isOpen, open: toast.isOpen }"
+      :class="{ closed: !toast.isOpen, open: toast.isOpen, 'has-action': toast.actionButton }"
       tabindex="0"
       role="status"
       @click="performAction(toast)"
@@ -14,6 +14,15 @@
       <p class="message">
         {{ toast.message }}
       </p>
+      <button
+        v-if="toast.actionButton"
+        class="action-button"
+        @click.stop="performActionButton(toast)"
+        @keydown.enter.stop="performActionButton(toast)"
+        @keydown.space.stop="performActionButton(toast)"
+      >
+        {{ toast.actionButton.label }}
+      </button>
     </div>
   </div>
 </template>
@@ -25,9 +34,16 @@ import { ToastEventBus } from '../../helpers/utils'
 let idCounter = 0
 
 /**
+ * @typedef {Object} ActionButton
+ * @property {string} label - Button text
+ * @property {Function} callback - Callback when button is clicked
+ */
+
+/**
  * @typedef Toast
  * @property {string | (({elapsedMs: number, remainingMs: number}) => string)} message
  * @property {Function | null} action
+ * @property {ActionButton | null} actionButton
  * @property {boolean} isOpen
  * @property {NodeJS.Timeout | number} timeout
  * @property {NodeJS.Timeout | number} interval
@@ -38,9 +54,9 @@ let idCounter = 0
 const toasts = reactive([])
 
 /**
- * @param {CustomEvent<{ message: string | (({elapsedMs: number, remainingMs: number}) => string), time: number | null, action: Function | null, abortSignal: AbortSignal | null }>} event
+ * @param {CustomEvent<{ message: string | (({elapsedMs: number, remainingMs: number}) => string), time: number | null, action: Function | null, actionButton: ActionButton | null, abortSignal: AbortSignal | null }>} event
  */
-function open({ detail: { message, time, action, abortSignal } }) {
+function open({ detail: { message, time, action, actionButton, abortSignal } }) {
   const id = idCounter++
 
   /** @type {Toast} */
@@ -48,6 +64,7 @@ function open({ detail: { message, time, action, abortSignal } }) {
     id,
     message,
     action,
+    actionButton: actionButton || null,
     isOpen: false,
     timeout: 0,
     interval: 0
@@ -110,6 +127,14 @@ function close(toast) {
  */
 function performAction(toast) {
   toast.action?.()
+  remove(toast)
+}
+
+/**
+ * @param {Toast} toast
+ */
+function performActionButton(toast) {
+  toast.actionButton?.callback?.()
   remove(toast)
 }
 

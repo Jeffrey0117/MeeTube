@@ -342,4 +342,39 @@ export default defineComponent({
     font-size: 18px;
   }
 }
+
+/* Mobile Landscape: Larger subtitles for better readability */
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  .bilingual-subtitle-overlay {
+    /* Position higher from bottom to avoid controls */
+    top: auto !important;
+    bottom: 15%;
+  }
+
+  .subtitle-content {
+    max-width: 85%;
+    padding: 5px 10px;
+    gap: 3px;
+  }
+
+  .subtitle-original {
+    font-size: 14px !important;
+    line-height: 1.25;
+  }
+
+  .subtitle-translation {
+    font-size: 16px !important;
+    line-height: 1.25;
+  }
+
+  .drag-handle {
+    padding: 4px 10px;
+    margin-bottom: 3px;
+  }
+
+  /* Ensure high visibility in fullscreen landscape */
+  .bilingual-subtitle-overlay {
+    z-index: 2147483646;
+  }
+}
 </style>

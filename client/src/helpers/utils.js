@@ -174,9 +174,60 @@ export function buildVTTFileLocally(storyboard, videoLengthSeconds) {
 export const ToastEventBus = new EventTarget()
 
 /**
+ * User-friendly error messages for common errors
+ */
+export const ErrorMessages = {
+  NETWORK_ERROR: '網路連線失敗，請檢查網路',
+  NETWORK_ERROR_EN: 'Network connection failed. Please check your connection.',
+  TIMEOUT: '請求逾時，請稍後再試',
+  TIMEOUT_EN: 'Request timed out. Please try again.',
+  VIDEO_UNAVAILABLE: '視頻暫時無法播放',
+  VIDEO_UNAVAILABLE_EN: 'Video is temporarily unavailable.',
+  TRANSLATION_FAILED: '翻譯服務暫時不可用',
+  TRANSLATION_FAILED_EN: 'Translation service is temporarily unavailable.',
+  SERVER_ERROR: '伺服器錯誤，請稍後再試',
+  SERVER_ERROR_EN: 'Server error. Please try again later.',
+  LOAD_FAILED: '載入失敗',
+  LOAD_FAILED_EN: 'Failed to load.',
+}
+
+/**
+ * Get appropriate error message based on error type
+ * @param {Error} error - The error object
+ * @param {string} [fallback] - Fallback message
+ * @returns {string}
+ */
+export function getErrorMessage(error, fallback = ErrorMessages.LOAD_FAILED) {
+  if (!error) return fallback
+
+  // Check for network errors
+  if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+    return ErrorMessages.NETWORK_ERROR
+  }
+
+  // Check for timeout
+  if (error.name === 'TimeoutError' || error.message?.includes('timeout')) {
+    return ErrorMessages.TIMEOUT
+  }
+
+  // Check for server errors (5xx)
+  if (error.status >= 500) {
+    return ErrorMessages.SERVER_ERROR
+  }
+
+  return fallback
+}
+
+/**
+ * @typedef {Object} ToastActionButton
+ * @property {string} label - Button text
+ * @property {Function} callback - Callback when button is clicked
+ */
+
+/**
  * @param {string | (({elapsedMs: number, remainingMs: number}) => string)} message
  * @param {number} time
- * @param {Function} action
+ * @param {Function|ToastActionButton} action - Can be a function or action button config
  * @param {AbortSignal} abortSignal
  */
 export function showToast(message, time = null, action = null, abortSignal = null) {
@@ -186,11 +237,24 @@ export function showToast(message, time = null, action = null, abortSignal = nul
     return
   }
 
+  // Handle action button format: { label: string, callback: Function }
+  let actionFn = null
+  let actionButton = null
+
+  if (action) {
+    if (typeof action === 'function') {
+      actionFn = action
+    } else if (typeof action === 'object' && action.label && action.callback) {
+      actionButton = action
+    }
+  }
+
   ToastEventBus.dispatchEvent(new CustomEvent('toast-open', {
     detail: {
       message,
       time,
-      action,
+      action: actionFn,
+      actionButton,
       abortSignal,
     }
   }))

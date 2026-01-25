@@ -309,4 +309,37 @@ $yt-tablet-breakpoint: 1350px;
       inset-block-start: 76px;
     }
   }
+
+  // Mobile landscape: hide sidebar and info, maximize video
+  @media screen and (max-width: 900px) and (orientation: landscape) {
+    @include single-column-template;
+    padding: 0;
+    gap: 0;
+    max-inline-size: 100vw;
+    overflow: hidden;
+
+    .videoArea {
+      width: 100vw;
+      height: 100vh;
+      max-inline-size: 100vw;
+
+      .videoAreaMargin {
+        margin: 0;
+      }
+
+      .videoPlayer {
+        border-radius: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
+        aspect-ratio: unset !important;
+      }
+    }
+
+    .infoArea,
+    .sidebarArea {
+      display: none;
+    }
+  }
 }

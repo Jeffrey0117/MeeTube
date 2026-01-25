@@ -485,12 +485,9 @@ router.get('/manifest/dash/id/:id', async (req, res) => {
 
     console.log(`[DASH] Found ${validFormats.length} valid formats for ${videoId}`)
 
-    // Get base URL for absolute URLs in manifest
-    const protocol = req.get('x-forwarded-proto') || req.protocol || 'http'
-    const host = req.get('host')
-    const baseUrl = `${protocol}://${host}`
-
-    const manifest = generateDashManifest(videoId, validFormats, info.basic_info?.duration || 0, baseUrl)
+    // Use relative URLs in manifest - they work correctly with Vite proxy
+    // Absolute URLs fail when behind proxy because req.get('host') returns localhost:3001
+    const manifest = generateDashManifest(videoId, validFormats, info.basic_info?.duration || 0, '')
 
     res.set('Content-Type', 'application/dash+xml')
     res.set('Cache-Control', 'no-cache')

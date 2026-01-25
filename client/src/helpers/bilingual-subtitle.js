@@ -4,6 +4,9 @@
  * Supports progressive loading with background preloading
  */
 
+import { translateLogger as logger } from './logger'
+import { withRetry, isRetryableError } from './retry'
+
 /**
  * Parse VTT content into subtitle fragments
  * @param {string} vttContent - VTT file content
@@ -93,7 +96,7 @@ export async function fetchVTT(url) {
 }
 
 /**
- * Translate texts via backend API
+ * Translate texts via backend API with retry logic
  * @param {string[]} texts - Array of texts to translate
  * @param {string} targetLang - Target language code
  * @returns {Promise<string[]>}
@@ -103,18 +106,29 @@ export async function translateBatch(texts, targetLang = 'zh-TW') {
     return []
   }
 
-  const response = await fetch('/api/translate/batch', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ texts, targetLang })
+  return withRetry(async () => {
+    const response = await fetch('/api/translate/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang })
+    })
+
+    if (!response.ok) {
+      const error = new Error(`Translation failed: ${response.status}`)
+      error.status = response.status
+      throw error
+    }
+
+    const data = await response.json()
+    return data.translations
+  }, {
+    maxRetries: 2,
+    baseDelay: 500,
+    shouldRetry: (error) => isRetryableError(error),
+    onRetry: (attempt, error) => {
+      logger.debug(`Translation retry attempt ${attempt}`, error.message)
+    }
   })
-
-  if (!response.ok) {
-    throw new Error(`Translation failed: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return data.translations
 }
 
 /**
@@ -148,7 +162,7 @@ export async function translateSubtitles(subtitles, targetLang = 'zh-TW', onProg
         }
       })
     } catch (error) {
-      console.error('[TRANSLATE] Batch failed:', error)
+      logger.error('Batch failed:', error)
       // Keep original text on error
       batch.forEach((sub, idx) => {
         const resultIdx = i + idx
@@ -233,14 +247,14 @@ export class TranslationQueue {
       translation: sub.translation || null
     }))
 
-    console.log(`[QUEUE] Initializing with ${this.subtitles.length} subtitles, translating first ${initialCount}`)
+    logger.debug(`Initializing with ${this.subtitles.length} subtitles, translating first ${initialCount}`)
 
     // Translate initial batch with high concurrency
     const toTranslate = Math.min(initialCount, this.subtitles.length)
     await this._translateRange(0, toTranslate)
 
     this.isInitialized = true
-    console.log(`[QUEUE] Initialization complete: ${this.translatedIndices.size}/${this.subtitles.length} translated`)
+    logger.debug(`Initialization complete: ${this.translatedIndices.size}/${this.subtitles.length} translated`)
   }
 
   /**
@@ -292,7 +306,7 @@ export class TranslationQueue {
         this.onUpdate(this.subtitles)
         this.onProgress(this.translatedIndices.size, this.subtitles.length)
       } catch (error) {
-        console.error('[QUEUE] Batch translation failed:', error)
+        logger.error('Batch translation failed:', error)
         batch.forEach(idx => this.pendingIndices.delete(idx))
       }
     }
@@ -348,7 +362,7 @@ export class TranslationQueue {
     }
 
     if (needsPreload) {
-      console.log(`[QUEUE] Preloading subtitles ${startIdx}-${actualEndIdx} for time ${currentTime.toFixed(1)}s`)
+      logger.debug(`Preloading subtitles ${startIdx}-${actualEndIdx} for time ${currentTime.toFixed(1)}s`)
       this._translateRange(startIdx, actualEndIdx)
     }
   }
@@ -393,11 +407,11 @@ export class TranslationQueue {
 
     const remaining = this.subtitles.length - this.translatedIndices.size
     if (remaining === 0) {
-      console.log('[QUEUE] All subtitles already translated')
+      logger.debug('All subtitles already translated')
       return
     }
 
-    console.log(`[QUEUE] Translating remaining ${remaining} subtitles in background`)
+    logger.debug(`Translating remaining ${remaining} subtitles in background`)
 
     // Find all untranslated indices
     const untranslated = []
@@ -424,7 +438,7 @@ export class TranslationQueue {
       }
     }
 
-    console.log(`[QUEUE] Background translation complete: ${this.translatedIndices.size}/${this.subtitles.length}`)
+    logger.debug(`Background translation complete: ${this.translatedIndices.size}/${this.subtitles.length}`)
   }
 
   /**
@@ -443,7 +457,7 @@ export class TranslationQueue {
     this.subtitles = []
     this.translatedIndices.clear()
     this.pendingIndices.clear()
-    console.log('[QUEUE] Destroyed')
+    logger.debug('Queue destroyed')
   }
 }
 

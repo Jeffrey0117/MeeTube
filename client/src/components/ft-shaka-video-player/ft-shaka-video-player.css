@@ -789,4 +789,50 @@
   fill: var(--primary-color, #f00) !important;
 }
 
+/* Mobile Landscape Mode: Video fills screen */
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  .ftVideoPlayer {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  .ftVideoPlayer video.player {
+    object-fit: contain !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Constrain overflow menu height in landscape */
+  :deep(.shaka-overflow-menu) {
+    max-height: 80vh;
+  }
+
+  /* Ensure controls are visible */
+  :deep(.shaka-bottom-controls) {
+    z-index: 101;
+  }
+
+  /* Stats position adjustment */
+  .stats {
+    top: 10px;
+    left: 10px;
+    font-size: 11px;
+    padding: 6px;
+    max-width: 40%;
+  }
+
+  /* Skipped segments position */
+  .skippedSegmentsWrapper {
+    right: 3%;
+    bottom: max(18%, calc(46px + 3%));
+  }
+
+  .skippedSegment {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}
+
 /* stylelint-enable liberty/use-logical-spec */

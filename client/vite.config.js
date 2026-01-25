@@ -89,6 +89,14 @@ export default defineConfig({
   server: {
     port: 5175,
     strictPort: true,
+    host: '0.0.0.0',  // 允許所有設備連線
+    cors: true,  // 允許跨域
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Access-Control-Allow-Origin': '*',
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
