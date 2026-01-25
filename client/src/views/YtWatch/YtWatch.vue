@@ -3,6 +3,9 @@
     <!-- Header -->
     <YtHeader @toggle-sidebar="toggleSidebar" />
 
+    <!-- Sidebar -->
+    <YtSidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
+
     <!-- Main Content -->
     <div class="yt-watch-content">
       <div class="yt-watch-container">
@@ -159,7 +162,7 @@
 </template>
 
 <script>
-import { YtHeader } from '../../components/yt-theme'
+import { YtHeader, YtSidebar } from '../../components/yt-theme'
 import FtShakaVideoPlayer from '../../components/ft-shaka-video-player/ft-shaka-video-player.vue'
 import {
   invidiousGetVideoInformation,
@@ -174,6 +177,7 @@ export default {
   name: 'YtWatch',
   components: {
     YtHeader,
+    YtSidebar,
     FtShakaVideoPlayer
   },
   data() {
@@ -202,7 +206,7 @@ export default {
       videoCurrentChapterIndex: 0,
       startTimeSeconds: 0,
       relatedVideos: [],
-      sidebarOpen: true,
+      sidebarOpen: false,
       isLive: false
     }
   },
