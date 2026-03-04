@@ -25,9 +25,7 @@
     "vue-i18n": "^11.2.7",
     "vue-observe-visibility": "^2.0.0-alpha.1",
     "vue-router": "^4.6.4",
-    "vuex": "^4.1.0"
-  },
-  "devDependencies": {
+    "vuex": "^4.1.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@vitejs/plugin-vue": "^5.2.1",
     "autoprefixer": "^10.4.23",
@@ -35,5 +33,6 @@
     "sass": "^1.97.1",
     "tailwindcss": "^4.1.18",
     "vite": "^6.0.7"
-  }
+  },
+  "devDependencies": {}
 }
