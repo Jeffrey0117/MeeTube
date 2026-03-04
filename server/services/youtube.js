@@ -85,7 +85,7 @@ export async function initYouTube() {
   const baseConfig = {
     lang: 'zh-TW',
     location: 'TW',
-    retrieve_player: true,
+    retrieve_player: false,  // Not needed for iOS client
   }
 
   if (cookie) {
@@ -96,11 +96,10 @@ export async function initYouTube() {
   // General client (search, channel, etc.)
   innertube = await Innertube.create(baseConfig)
 
-  // Android client (for high quality streams)
+  // iOS client (for streaming - provides direct URLs, not blocked)
   innertubeAndroid = await Innertube.create({
     ...baseConfig,
-    client_type: ClientType.ANDROID,
-    retrieve_player: true,
+    client_type: ClientType.IOS,
   })
 
   console.log('[YOUTUBE] Ready!')
@@ -473,7 +472,7 @@ export async function convertVideoInfo(info, relatedVideos, channelAvatar = null
   if (streaming?.formats) {
     for (const f of streaming.formats) {
       formatStreams.push({
-        url: toProxyUrl(f.url),
+        url: toProxyUrl(f.url || ''),
         itag: f.itag,
         type: f.mime_type,
         quality: f.quality_label || f.quality,
@@ -489,7 +488,7 @@ export async function convertVideoInfo(info, relatedVideos, channelAvatar = null
   if (streaming?.adaptive_formats) {
     for (const f of streaming.adaptive_formats) {
       adaptiveFormats.push({
-        url: toProxyUrl(f.url),
+        url: toProxyUrl(f.url || ''),
         itag: f.itag,
         type: f.mime_type,
         bitrate: f.bitrate,

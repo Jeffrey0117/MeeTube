@@ -233,21 +233,17 @@ router.get('/videos/:id', async (req, res) => {
     console.log(`[VIDEO] Fetching: ${videoId}`)
 
     const innertube = getInnertube()
-    const innertubeAndroid = getInnertubeAndroid()
+    const innertubeIos = getInnertubeAndroid()  // Actually iOS client now
 
-    // Try web client first (more reliable), fall back to Android
+    // Try iOS client first (has direct URLs), fall back to web
     let info
     try {
+      info = await innertubeIos.getBasicInfo(videoId)
+      console.log(`[VIDEO] Got info via iOS client`)
+    } catch (iosErr) {
+      console.log(`[VIDEO] iOS client failed: ${iosErr.message}, trying web...`)
       info = await innertube.getInfo(videoId)
       console.log(`[VIDEO] Got info via web client`)
-    } catch (webErr) {
-      console.log(`[VIDEO] Web client failed: ${webErr.message}, trying Android...`)
-      try {
-        info = await innertubeAndroid.getBasicInfo(videoId)
-        console.log(`[VIDEO] Got info via Android client`)
-      } catch (androidErr) {
-        throw new Error(`Both clients failed. Web: ${webErr.message} | Android: ${androidErr.message}`)
-      }
     }
 
     const relatedVideos = info.watch_next_feed || []
@@ -529,14 +525,17 @@ router.get('/manifest/dash/id/:id', async (req, res) => {
     console.log(`[DASH] Generating manifest for: ${videoId}`)
 
     const innertube = getInnertube()
-    const innertubeAndroid = getInnertubeAndroid()
+    const innertubeIos = getInnertubeAndroid()  // Actually iOS client now
 
+    // Try iOS client first (has direct URLs), fall back to web
     let info
     try {
+      info = await innertubeIos.getBasicInfo(videoId)
+      console.log(`[DASH] Got info via iOS client`)
+    } catch (iosErr) {
+      console.log(`[DASH] iOS client failed: ${iosErr.message}, trying web...`)
       info = await innertube.getInfo(videoId)
-    } catch (webErr) {
-      console.log(`[DASH] Web client failed: ${webErr.message}, trying Android...`)
-      info = await innertubeAndroid.getBasicInfo(videoId)
+      console.log(`[DASH] Got info via web client`)
     }
     const streaming = info.streaming_data
 
