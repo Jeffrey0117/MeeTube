@@ -232,39 +232,34 @@ router.get('/videos/:id', async (req, res) => {
     const videoId = req.params.id
     console.log(`[VIDEO] Fetching: ${videoId}`)
 
-    const innertubeAndroid = getInnertubeAndroid()
     const innertube = getInnertube()
+    const innertubeAndroid = getInnertubeAndroid()
 
-    // Use Android client for streams
-    const info = await innertubeAndroid.getBasicInfo(videoId)
-
-    // Use regular client for related videos and captions
-    let relatedVideos = []
-    let channelAvatar = null
-    let captions = null
-
+    // Try web client first (more reliable), fall back to Android
+    let info
     try {
-      const fullInfo = await innertube.getInfo(videoId)
-      relatedVideos = fullInfo.watch_next_feed || []
-      console.log(`[VIDEO] Found ${relatedVideos.length} related videos`)
-
-      // Get captions from regular client (Android client doesn't include captions)
-      captions = fullInfo.captions
-      console.log(`[VIDEO] Found ${captions?.caption_tracks?.length || 0} caption tracks`)
-      if (captions?.caption_tracks?.length > 0) {
-        console.log(`[VIDEO] Caption tracks:`, captions.caption_tracks.map(t => ({
-          lang: t.language_code,
-          name: t.name?.text,
-          baseUrl: t.base_url?.substring(0, 80) + '...'
-        })))
+      info = await innertube.getInfo(videoId)
+      console.log(`[VIDEO] Got info via web client`)
+    } catch (webErr) {
+      console.log(`[VIDEO] Web client failed: ${webErr.message}, trying Android...`)
+      try {
+        info = await innertubeAndroid.getBasicInfo(videoId)
+        console.log(`[VIDEO] Got info via Android client`)
+      } catch (androidErr) {
+        throw new Error(`Both clients failed. Web: ${webErr.message} | Android: ${androidErr.message}`)
       }
+    }
 
-      const secondaryInfo = fullInfo.secondary_info
-      if (secondaryInfo?.owner?.author?.thumbnails?.[0]?.url) {
-        channelAvatar = secondaryInfo.owner.author.thumbnails[0].url
-      }
-    } catch (e) {
-      console.log(`[VIDEO] Could not get related videos: ${e.message}`)
+    const relatedVideos = info.watch_next_feed || []
+    console.log(`[VIDEO] Found ${relatedVideos.length} related videos`)
+
+    const captions = info.captions || null
+    console.log(`[VIDEO] Found ${captions?.caption_tracks?.length || 0} caption tracks`)
+
+    let channelAvatar = null
+    const secondaryInfo = info.secondary_info
+    if (secondaryInfo?.owner?.author?.thumbnails?.[0]?.url) {
+      channelAvatar = secondaryInfo.owner.author.thumbnails[0].url
     }
 
     const converted = await convertVideoInfo(info, relatedVideos, channelAvatar, captions)
@@ -533,8 +528,16 @@ router.get('/manifest/dash/id/:id', async (req, res) => {
     const videoId = req.params.id
     console.log(`[DASH] Generating manifest for: ${videoId}`)
 
+    const innertube = getInnertube()
     const innertubeAndroid = getInnertubeAndroid()
-    const info = await innertubeAndroid.getBasicInfo(videoId)
+
+    let info
+    try {
+      info = await innertube.getInfo(videoId)
+    } catch (webErr) {
+      console.log(`[DASH] Web client failed: ${webErr.message}, trying Android...`)
+      info = await innertubeAndroid.getBasicInfo(videoId)
+    }
     const streaming = info.streaming_data
 
     if (!streaming || !streaming.adaptive_formats) {

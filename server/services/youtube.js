@@ -85,7 +85,7 @@ export async function initYouTube() {
   const baseConfig = {
     lang: 'zh-TW',
     location: 'TW',
-    retrieve_player: false,
+    retrieve_player: true,
   }
 
   if (cookie) {
