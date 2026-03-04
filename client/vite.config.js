@@ -141,6 +141,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     rollupOptions: {
+      external: ['youtubei.js'],
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'vuex', 'vue-i18n'],
