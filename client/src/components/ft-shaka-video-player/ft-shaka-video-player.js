@@ -679,13 +679,13 @@ export default defineComponent({
         // YouTube uses these values and they seem to work well in FreeTube too,
         // so we might as well use them
         streaming: {
-          bufferingGoal: 30,
+          bufferingGoal: 60,
           rebufferingGoal: 5,
           bufferBehind: 30,
           retryParameters: {
-            maxAttempts: 10,
-            baseDelay: 500,
-            backoffFactor: 1.5,
+            maxAttempts: 6,
+            baseDelay: 2000,
+            backoffFactor: 2,
             timeout: 120000,
             stallTimeout: 30000,
             connectionTimeout: 20000,
@@ -694,7 +694,6 @@ export default defineComponent({
             if (error.severity !== shaka.util.Error.Severity.RECOVERABLE) {
               error.severity = shaka.util.Error.Severity.RECOVERABLE
             }
-            console.warn('[ShakaStream] Forcing retry for error:', error.code)
           },
         },
         manifest: {

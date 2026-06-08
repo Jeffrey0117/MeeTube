@@ -9,6 +9,12 @@ import { getYouTubeCookie } from '../services/youtube.js'
 
 const router = Router()
 
+const youtubeAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 4,
+  keepAliveMsecs: 30000,
+})
+
 // Video thumbnail proxy
 router.get(['/:viPath(vi|vi_webp)/:videoId/:filename'], (req, res) => {
   const { viPath, videoId, filename } = req.params
@@ -283,7 +289,7 @@ router.options('/videoplayback', (req, res) => {
 router.get('/videoplayback', handleVideoPlayback)
 router.head('/videoplayback', handleVideoPlayback)
 
-function handleVideoPlayback(req, res) {
+function handleVideoPlayback(req, res, retryCount = 0) {
   const encodedUrl = req.query.url
   if (!encodedUrl) {
     return res.status(400).json({ error: 'Missing url parameter' })
@@ -293,32 +299,32 @@ function handleVideoPlayback(req, res) {
   try {
     targetUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8')
   } catch (e) {
-    console.error('[PROXY] Failed to decode URL:', e.message)
     return res.status(400).json({ error: 'Invalid URL encoding' })
   }
 
-  console.log(`[PROXY] ${req.method}: ${targetUrl.substring(0, 80)}...`)
+  if (retryCount === 0) {
+    console.log(`[PROXY] ${req.method}: ${targetUrl.substring(0, 80)}...`)
+  }
 
   let parsedUrl
   try {
     parsedUrl = new URL(targetUrl)
   } catch (e) {
-    console.error('[PROXY] Invalid URL:', e.message)
     return res.status(400).json({ error: 'Invalid URL' })
   }
 
-  const headers = {
+  const reqHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     'Accept-Encoding': 'identity',
     'Accept': '*/*',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Connection': 'keep-alive',
   }
 
-  // Add cookie if available
   const cookie = getYouTubeCookie()
-  if (cookie) {
-    headers['Cookie'] = cookie
+  if (cookie) reqHeaders['Cookie'] = cookie
+
+  if (req.headers.range) {
+    reqHeaders['Range'] = req.headers.range
   }
 
   const options = {
@@ -326,29 +332,31 @@ function handleVideoPlayback(req, res) {
     port: 443,
     path: parsedUrl.pathname + parsedUrl.search,
     method: req.method,
-    headers,
-  }
-
-  // Forward Range header for seek support
-  if (req.headers.range) {
-    options.headers['Range'] = req.headers.range
-    console.log(`[PROXY] Range: ${req.headers.range}`)
+    headers: reqHeaders,
+    agent: youtubeAgent,
   }
 
   const proxyReq = https.request(options, (proxyRes) => {
-    console.log(`[PROXY] Status: ${proxyRes.statusCode}`)
+    // 429 Too Many Requests — wait and retry server-side
+    if (proxyRes.statusCode === 429 && retryCount < 3) {
+      proxyRes.resume()
+      const delay = (retryCount + 1) * 2000
+      console.log(`[PROXY] 429 rate limited, retry ${retryCount + 1}/3 after ${delay}ms`)
+      setTimeout(() => handleVideoPlayback(req, res, retryCount + 1), delay)
+      return
+    }
 
-    // Handle redirects
+    // Redirects
     if (proxyRes.statusCode === 302 || proxyRes.statusCode === 301) {
       const redirectUrl = proxyRes.headers.location
       if (redirectUrl) {
-        console.log(`[PROXY] Redirect to: ${redirectUrl.substring(0, 80)}...`)
+        proxyRes.resume()
         const encoded = Buffer.from(redirectUrl).toString('base64url')
         return res.redirect(`/videoplayback?url=${encoded}`)
       }
     }
 
-    const headers = {
+    const resHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Range',
       'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
@@ -357,52 +365,35 @@ function handleVideoPlayback(req, res) {
     }
 
     if (proxyRes.headers['content-length']) {
-      headers['Content-Length'] = proxyRes.headers['content-length']
+      resHeaders['Content-Length'] = proxyRes.headers['content-length']
     }
     if (proxyRes.headers['content-range']) {
-      headers['Content-Range'] = proxyRes.headers['content-range']
+      resHeaders['Content-Range'] = proxyRes.headers['content-range']
     }
 
-    res.writeHead(proxyRes.statusCode, headers)
+    res.writeHead(proxyRes.statusCode, resHeaders)
 
     if (req.method === 'HEAD') {
       proxyRes.resume()
       res.end()
     } else {
       proxyRes.on('error', (e) => {
-        console.error('[PROXY] Response stream error:', e.message)
+        console.error('[PROXY] Stream error:', e.message)
         if (!res.writableEnded) res.end()
       })
-
-      res.on('close', () => {
-        proxyRes.destroy()
-      })
-
+      res.on('close', () => proxyRes.destroy())
       proxyRes.pipe(res)
     }
   })
 
   proxyReq.on('error', (e) => {
     console.error('[PROXY ERROR]', e.message)
-    if (!res.headersSent) {
-      res.status(502).json({ error: e.message })
-    }
-  })
-
-  proxyReq.on('socket', (socket) => {
-    socket.setTimeout(300000)
-    socket.on('timeout', () => {
-      console.error('[PROXY] Socket idle 300s, destroying')
-      proxyReq.destroy()
-    })
+    if (!res.headersSent) res.status(502).json({ error: e.message })
   })
 
   proxyReq.setTimeout(120000, () => {
-    console.error('[PROXY TIMEOUT] 120s exceeded waiting for response')
     proxyReq.destroy()
-    if (!res.headersSent) {
-      res.status(504).json({ error: 'Timeout' })
-    }
+    if (!res.headersSent) res.status(504).json({ error: 'Timeout' })
   })
 
   proxyReq.end()
