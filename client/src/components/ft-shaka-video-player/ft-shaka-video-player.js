@@ -691,6 +691,8 @@ export default defineComponent({
             connectionTimeout: 20000,
           },
           failureCallback: (error) => {
+            const httpStatus = error.data?.[1]
+            if (httpStatus === 403 || httpStatus === 410) return
             if (error.severity !== shaka.util.Error.Severity.RECOVERABLE) {
               error.severity = shaka.util.Error.Severity.RECOVERABLE
             }
@@ -2870,10 +2872,10 @@ export default defineComponent({
         return
       }
 
+      if (error.category === shaka.util.Error.Category.TEXT) return
+
       if (
         !ignoreErrors &&
-        error.category !== shaka.util.Error.Category.TEXT &&
-        error.category !== shaka.util.Error.Category.NETWORK &&
         !(error.code === shaka.util.Error.Code.BAD_HTTP_STATUS && error.data[0]?.startsWith?.('https://www.youtube.com/api/timedtext'))
       ) {
         // don't react to multiple consecutive errors, otherwise we don't give the format fallback from the previous error a chance to work
