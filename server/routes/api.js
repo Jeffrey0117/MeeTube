@@ -19,6 +19,7 @@ import {
   toGgphtProxyUrl,
   toProxyUrl,
 } from '../services/youtube.js'
+import { fetchTranscript } from 'youtube-transcript'
 
 const execAsync = promisify(exec)
 
@@ -101,57 +102,23 @@ const captionCache = new CaptionCache()
  * @param {string} langCode
  * @param {string|null} baseUrl - Caption URL if available
  */
-async function prefetchCaption(videoId, langCode, baseUrl = null) {
-  // Skip if already cached
-  if (captionCache.has(videoId, langCode)) {
-    console.log(`[CAPTION-PREFETCH] Already cached: ${videoId}_${langCode}`)
-    return
-  }
+async function prefetchCaption(videoId, langCode) {
+  if (captionCache.has(videoId, langCode)) return
 
   console.log(`[CAPTION-PREFETCH] Starting prefetch for ${videoId}_${langCode}`)
 
   try {
-    let captionUrl = baseUrl
+    const segments = await fetchTranscript(videoId, { lang: langCode })
+    if (!segments || segments.length === 0) return
 
-    // If no URL provided, we need to get it from the API
-    if (!captionUrl) {
-      const innertube = getInnertube()
-      const info = await innertube.getInfo(videoId)
-      const tracks = info.captions?.caption_tracks || []
-      const track = tracks.find(t => t.language_code === langCode || t.language_code.startsWith(langCode))
-      if (!track?.base_url) {
-        console.log(`[CAPTION-PREFETCH] No ${langCode} track found for ${videoId}`)
-        return
-      }
-      captionUrl = track.base_url
+    let vtt = 'WEBVTT\n\n'
+    for (const seg of segments) {
+      vtt += `${formatVttTime(seg.offset)} --> ${formatVttTime(seg.offset + seg.duration)}\n`
+      vtt += `${seg.text}\n\n`
     }
 
-    // Fetch the caption
-    const url = new URL(captionUrl)
-    url.searchParams.set('fmt', 'vtt')
-
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'text/vtt,*/*',
-      'Referer': 'https://www.youtube.com/',
-    }
-
-    const response = await fetch(url.toString(), { headers })
-    if (!response.ok) {
-      throw new Error(`Fetch failed: ${response.status}`)
-    }
-
-    let text = await response.text()
-
-    // Ensure valid VTT
-    if (text.length > 0 && !text.startsWith('WEBVTT')) {
-      text = 'WEBVTT\n\n' + text
-    }
-
-    if (text.length > 0) {
-      captionCache.set(videoId, langCode, text)
-      console.log(`[CAPTION-PREFETCH] Success: ${videoId}_${langCode} (${text.length} bytes)`)
-    }
+    captionCache.set(videoId, langCode, vtt)
+    console.log(`[CAPTION-PREFETCH] Success: ${videoId}_${langCode} (${vtt.length} bytes)`)
   } catch (error) {
     console.log(`[CAPTION-PREFETCH] Failed for ${videoId}_${langCode}: ${error.message}`)
   }
@@ -237,8 +204,10 @@ router.get('/videos/:id', async (req, res) => {
 
     // Try iOS client first (has direct URLs), fall back to web
     let info
+    let usedIos = false
     try {
       info = await innertubeIos.getBasicInfo(videoId)
+      usedIos = true
       console.log(`[VIDEO] Got info via iOS client`)
     } catch (iosErr) {
       console.log(`[VIDEO] iOS client failed: ${iosErr.message}, trying web...`)
@@ -246,17 +215,35 @@ router.get('/videos/:id', async (req, res) => {
       console.log(`[VIDEO] Got info via web client`)
     }
 
-    const relatedVideos = info.watch_next_feed || []
-    console.log(`[VIDEO] Found ${relatedVideos.length} related videos`)
-
-    const captions = info.captions || null
-    console.log(`[VIDEO] Found ${captions?.caption_tracks?.length || 0} caption tracks`)
-
+    // iOS/getBasicInfo doesn't return watch_next_feed, so fetch from web client
+    let relatedVideos = info.watch_next_feed || []
+    let captions = info.captions || null
     let channelAvatar = null
     const secondaryInfo = info.secondary_info
     if (secondaryInfo?.owner?.author?.thumbnails?.[0]?.url) {
       channelAvatar = secondaryInfo.owner.author.thumbnails[0].url
     }
+
+    if (usedIos && relatedVideos.length === 0) {
+      try {
+        const webInfo = await innertube.getInfo(videoId)
+        relatedVideos = webInfo.watch_next_feed || []
+        console.log(`[VIDEO] Fetched ${relatedVideos.length} related videos from web client`)
+        // Also grab captions/avatar from web if iOS didn't have them
+        if (!captions) captions = webInfo.captions || null
+        if (!channelAvatar) {
+          const webSecondary = webInfo.secondary_info
+          if (webSecondary?.owner?.author?.thumbnails?.[0]?.url) {
+            channelAvatar = webSecondary.owner.author.thumbnails[0].url
+          }
+        }
+      } catch (webErr) {
+        console.log(`[VIDEO] Web client fallback for related videos failed: ${webErr.message}`)
+      }
+    }
+
+    console.log(`[VIDEO] Found ${relatedVideos.length} related videos`)
+    console.log(`[VIDEO] Found ${captions?.caption_tracks?.length || 0} caption tracks`)
 
     const converted = await convertVideoInfo(info, relatedVideos, channelAvatar, captions)
 
@@ -265,9 +252,8 @@ router.get('/videos/:id', async (req, res) => {
       const enTrack = captions.caption_tracks.find(t =>
         t.language_code === 'en' || t.language_code.startsWith('en')
       )
-      if (enTrack?.base_url) {
-        // Fire and forget - don't await
-        prefetchCaption(videoId, 'en', enTrack.base_url).catch(() => {})
+      if (enTrack) {
+        prefetchCaption(videoId, 'en').catch(() => {})
       }
     }
 
@@ -579,10 +565,8 @@ router.get('/captions/:videoId', async (req, res) => {
   try {
     const { videoId } = req.params
     const langCode = req.query.lang || 'en'
-    const encodedSrc = req.query.src || ''
-    const clientCookie = req.headers['x-youtube-cookie'] || ''
 
-    console.log(`[CAPTIONS] Fetching captions for ${videoId}, lang=${langCode}, hasSrc=${!!encodedSrc}, hasCookie=${!!clientCookie}`)
+    console.log(`[CAPTIONS] Fetching captions for ${videoId}, lang=${langCode}`)
 
     // Check cache first
     const cachedCaption = captionCache.get(videoId, langCode)
@@ -597,123 +581,28 @@ router.get('/captions/:videoId', async (req, res) => {
       return res.send(cachedCaption)
     }
 
-    let captionBaseUrl = null
+    // Use youtube-transcript package (works around YouTube API restrictions)
+    try {
+      console.log(`[CAPTIONS] Fetching via youtube-transcript for ${videoId}, lang=${langCode}`)
+      const segments = await fetchTranscript(videoId, { lang: langCode })
 
-    // If we have an encoded source URL, use it directly (no need to call getInfo again)
-    if (encodedSrc) {
-      try {
-        captionBaseUrl = Buffer.from(encodedSrc, 'base64url').toString('utf-8')
-        console.log(`[CAPTIONS] Using encoded URL: ${captionBaseUrl.substring(0, 100)}...`)
-      } catch (e) {
-        console.log(`[CAPTIONS] Failed to decode src: ${e.message}`)
-      }
-    }
-
-    // Fallback: fetch caption URL from YouTube API
-    if (!captionBaseUrl) {
-      console.log(`[CAPTIONS] No encoded URL, fetching from YouTube API...`)
-      const innertube = getInnertube()
-      const info = await innertube.getInfo(videoId)
-
-      const tracks = info.captions?.caption_tracks || []
-      console.log(`[CAPTIONS] Found ${tracks.length} caption tracks`)
-
-      if (tracks.length === 0) {
+      if (!segments || segments.length === 0) {
+        console.log(`[CAPTIONS] No segments returned`)
         return res.status(404).json({ error: 'No captions available' })
       }
 
-      let track = tracks.find(t => t.language_code === langCode)
-      if (!track) {
-        track = tracks.find(t =>
-          t.language_code.startsWith(langCode) || langCode.startsWith(t.language_code)
-        )
-      }
-      if (!track) {
-        track = tracks[0]
-        console.log(`[CAPTIONS] Requested ${langCode} not found, using ${track.language_code}`)
+      let vtt = 'WEBVTT\n\n'
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i]
+        const startMs = seg.offset
+        const endMs = startMs + seg.duration
+        vtt += `${formatVttTime(startMs)} --> ${formatVttTime(endMs)}\n`
+        vtt += `${seg.text}\n\n`
       }
 
-      if (!track.base_url) {
-        return res.status(404).json({ error: 'No caption URL available' })
-      }
+      console.log(`[CAPTIONS] Generated VTT: ${vtt.length} bytes, ${segments.length} cues`)
 
-      captionBaseUrl = track.base_url
-    }
-
-    // Fetch the caption content
-    console.log(`[CAPTIONS] Fetching from: ${captionBaseUrl.substring(0, 100)}...`)
-
-    try {
-      const captionUrl = new URL(captionBaseUrl)
-      captionUrl.searchParams.set('fmt', 'vtt')
-
-      // Build headers with optional cookie
-      const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/vtt,*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.youtube.com/',
-        'Origin': 'https://www.youtube.com'
-      }
-
-      // Add YouTube cookie if provided by client
-      if (clientCookie) {
-        headers['Cookie'] = clientCookie
-        console.log(`[CAPTIONS] Using client-provided cookie`)
-      }
-
-      const response = await fetch(captionUrl.toString(), { headers })
-
-      if (!response.ok) {
-        throw new Error(`Fetch failed with status ${response.status}`)
-      }
-
-      let text = await response.text()
-      console.log(`[CAPTIONS] Fetched ${text.length} bytes`)
-
-      // If empty, try other formats
-      if (text.length === 0) {
-        console.log(`[CAPTIONS] Empty response, trying JSON3 format...`)
-        captionUrl.searchParams.set('fmt', 'json3')
-        const jsonResponse = await fetch(captionUrl.toString(), { headers })
-        if (jsonResponse.ok) {
-          const jsonText = await jsonResponse.text()
-          if (jsonText.length > 0 && jsonText.startsWith('{')) {
-            const jsonData = JSON.parse(jsonText)
-            text = convertJson3ToVtt(jsonData)
-            console.log(`[CAPTIONS] Converted JSON3 to VTT: ${text.length} bytes`)
-          }
-        }
-      }
-
-      // If still empty, try without format parameter
-      if (text.length === 0) {
-        console.log(`[CAPTIONS] Still empty, trying without fmt param...`)
-        captionUrl.searchParams.delete('fmt')
-        const defaultResponse = await fetch(captionUrl.toString(), { headers })
-        if (defaultResponse.ok) {
-          text = await defaultResponse.text()
-          if (text.includes('<text')) {
-            text = convertXmlToVtt(text)
-            console.log(`[CAPTIONS] Converted XML to VTT: ${text.length} bytes`)
-          }
-        }
-      }
-
-      if (text.length === 0) {
-        console.log(`[CAPTIONS] All fetch attempts returned empty`)
-        return res.status(404).json({ error: 'Caption content unavailable (YouTube API restriction)' })
-      }
-
-      // Ensure it's valid VTT
-      if (!text.startsWith('WEBVTT')) {
-        text = 'WEBVTT\n\n' + text
-      }
-
-      console.log(`[CAPTIONS] Returning VTT (${text.length} bytes)`)
-
-      // Store in cache
-      captionCache.set(videoId, langCode, text)
+      captionCache.set(videoId, langCode, vtt)
 
       res.set({
         'Content-Type': 'text/vtt; charset=utf-8',
@@ -721,11 +610,10 @@ router.get('/captions/:videoId', async (req, res) => {
         'Access-Control-Allow-Origin': '*',
         'X-Caption-Cache': 'MISS',
       })
-      return res.send(text)
-
-    } catch (fetchError) {
-      console.log(`[CAPTIONS] Fetch error: ${fetchError.message}`)
-      return res.status(404).json({ error: 'Failed to fetch captions' })
+      return res.send(vtt)
+    } catch (transcriptError) {
+      console.log(`[CAPTIONS] youtube-transcript failed: ${transcriptError.message}`)
+      return res.status(404).json({ error: 'Captions not available for this video' })
     }
   } catch (error) {
     console.error('[CAPTIONS]', error.message)

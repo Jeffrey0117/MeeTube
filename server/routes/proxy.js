@@ -301,8 +301,8 @@ function handleVideoPlayback(req, res) {
     }
   })
 
-  proxyReq.setTimeout(30000, () => {
-    console.error('[PROXY TIMEOUT]')
+  proxyReq.setTimeout(120000, () => {
+    console.error('[PROXY TIMEOUT] 120s exceeded')
     proxyReq.destroy()
     if (!res.headersSent) {
       res.status(504).json({ error: 'Timeout' })

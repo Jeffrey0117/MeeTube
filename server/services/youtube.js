@@ -552,14 +552,11 @@ export async function convertVideoInfo(info, relatedVideos, channelAvatar = null
       const captionSource = captions || info.captions
       const tracks = captionSource?.caption_tracks || []
       console.log(`[convertVideoInfo] Using ${tracks.length} caption tracks`)
-      return tracks.map(track => {
-        // Use yt-dlp endpoint for reliable caption fetching
-        return {
-          url: `/api/captions-ytdlp/${details.id}?lang=${track.language_code}`,
-          label: track.name?.text || track.language_code,
-          language_code: track.language_code
-        }
-      })
+      return tracks.map(track => ({
+        url: `/api/captions/${details.id}?lang=${track.language_code}`,
+        label: track.name?.text || track.language_code,
+        language_code: track.language_code
+      }))
     })(),
     recommendedVideos: recommendedVideos,
     playabilityStatus: playabilityStatus?.status || 'OK',

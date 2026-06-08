@@ -191,6 +191,7 @@ export default {
 
   .yt-sidebar:not(.is-open) {
     width: 0;
+    height: 0;
     padding: 0;
     overflow: hidden;
   }

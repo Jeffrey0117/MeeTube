@@ -35,7 +35,7 @@
               :title="videoTitle"
               :theatre-possible="false"
               :use-theatre-mode="false"
-              class="w-full h-full"
+              class="yt-player-fill"
               @error="handlePlayerError"
               @loaded="handleVideoLoaded"
               @timeupdate="updateCurrentChapter"
@@ -556,7 +556,7 @@ export default {
 .yt-watch-content {
   display: flex;
   justify-content: center;
-  padding-top: 56px;
+  padding-top: 0;
   padding-left: 16px;
   padding-right: 16px;
 }
@@ -576,10 +576,21 @@ export default {
 }
 
 .yt-video-player {
+  width: 100%;
   aspect-ratio: 16 / 9;
   background-color: #000;
   border-radius: 12px;
   overflow: hidden;
+}
+
+.yt-video-player :deep(.ftVideoPlayer) {
+  width: 100%;
+  height: 100%;
+}
+
+.yt-video-player :deep(.player-wrapper) {
+  width: 100%;
+  height: 100%;
 }
 
 .yt-video-loading {
@@ -621,7 +632,7 @@ export default {
 
 /* Video Info */
 .yt-video-info {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .yt-video-title {
@@ -925,7 +936,7 @@ export default {
   .yt-watch-content {
     padding-left: 0;
     padding-right: 0;
-    padding-top: 48px; /* Match mobile header height */
+    padding-top: 0; /* Remove top padding on mobile */
   }
 
   .yt-video-player,
