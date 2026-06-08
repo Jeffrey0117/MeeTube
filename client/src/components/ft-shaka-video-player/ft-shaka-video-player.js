@@ -679,9 +679,17 @@ export default defineComponent({
         // YouTube uses these values and they seem to work well in FreeTube too,
         // so we might as well use them
         streaming: {
-          bufferingGoal: 180,
-          rebufferingGoal: 0.02,
-          bufferBehind: 300
+          bufferingGoal: 120,
+          rebufferingGoal: 2,
+          bufferBehind: 60,
+          retryParameters: {
+            maxAttempts: 5,
+            baseDelay: 1000,
+            backoffFactor: 2,
+            timeout: 60000,
+            stallTimeout: 20000,
+            connectionTimeout: 15000,
+          },
         },
         manifest: {
           disableVideo: format === 'audio',
@@ -907,7 +915,8 @@ export default defineComponent({
           'ft_autoplay_toggle',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
           'playback_rate',
-          'ft_bilingual',  // Unified subtitle button (replaces captions)
+          'captions',
+          'ft_bilingual',
           'ft_audio_tracks',
           'ft_equalizer',
           'loop',
@@ -936,6 +945,7 @@ export default defineComponent({
         )
 
         uiConfig.overflowMenuButtons.push(
+          'captions',
           'ft_audio_tracks',
           'playback_rate',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',

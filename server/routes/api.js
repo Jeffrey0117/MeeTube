@@ -111,10 +111,15 @@ async function prefetchCaption(videoId, langCode) {
     const segments = await fetchTranscript(videoId, { lang: langCode })
     if (!segments || segments.length === 0) return
 
+    const needsConv = segments.length > 3 &&
+      segments[Math.floor(segments.length / 2)].offset < 1000
+
     let vtt = 'WEBVTT\n\n'
     for (const seg of segments) {
-      vtt += `${formatVttTime(seg.offset)} --> ${formatVttTime(seg.offset + seg.duration)}\n`
-      vtt += `${seg.text}\n\n`
+      const s = needsConv ? Math.round(seg.offset * 1000) : seg.offset
+      const e = s + (needsConv ? Math.round(seg.duration * 1000) : seg.duration)
+      vtt += `${formatVttTime(s)} --> ${formatVttTime(e)}\n`
+      vtt += `${decodeHtmlEntities(seg.text)}\n\n`
     }
 
     captionCache.set(videoId, langCode, vtt)
@@ -591,13 +596,17 @@ router.get('/captions/:videoId', async (req, res) => {
         return res.status(404).json({ error: 'No captions available' })
       }
 
+      // Detect if offsets are in seconds (< 1000 for a segment past 10s into video)
+      const needsMsConversion = segments.length > 3 &&
+        segments[Math.floor(segments.length / 2)].offset < 1000
+
       let vtt = 'WEBVTT\n\n'
       for (let i = 0; i < segments.length; i++) {
         const seg = segments[i]
-        const startMs = seg.offset
-        const endMs = startMs + seg.duration
+        const startMs = needsMsConversion ? Math.round(seg.offset * 1000) : seg.offset
+        const endMs = startMs + (needsMsConversion ? Math.round(seg.duration * 1000) : seg.duration)
         vtt += `${formatVttTime(startMs)} --> ${formatVttTime(endMs)}\n`
-        vtt += `${seg.text}\n\n`
+        vtt += `${decodeHtmlEntities(seg.text)}\n\n`
       }
 
       console.log(`[CAPTIONS] Generated VTT: ${vtt.length} bytes, ${segments.length} cues`)
@@ -620,6 +629,17 @@ router.get('/captions/:videoId', async (req, res) => {
     res.status(500).json({ error: error.message })
   }
 })
+
+function decodeHtmlEntities(text) {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+}
 
 // Helper function to format milliseconds to VTT timestamp
 function formatVttTime(ms) {

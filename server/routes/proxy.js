@@ -262,7 +262,6 @@ function handleVideoPlayback(req, res) {
       const redirectUrl = proxyRes.headers.location
       if (redirectUrl) {
         console.log(`[PROXY] Redirect to: ${redirectUrl.substring(0, 80)}...`)
-        // Re-encode the redirect URL and redirect client
         const encoded = Buffer.from(redirectUrl).toString('base64url')
         return res.redirect(`/videoplayback?url=${encoded}`)
       }
@@ -285,11 +284,19 @@ function handleVideoPlayback(req, res) {
 
     res.writeHead(proxyRes.statusCode, headers)
 
-    // For HEAD requests, don't pipe the body
     if (req.method === 'HEAD') {
       proxyRes.resume()
       res.end()
     } else {
+      proxyRes.on('error', (e) => {
+        console.error('[PROXY] Response stream error:', e.message)
+        if (!res.writableEnded) res.end()
+      })
+
+      res.on('close', () => {
+        proxyRes.destroy()
+      })
+
       proxyRes.pipe(res)
     }
   })
@@ -301,8 +308,16 @@ function handleVideoPlayback(req, res) {
     }
   })
 
+  proxyReq.on('socket', (socket) => {
+    socket.setTimeout(300000)
+    socket.on('timeout', () => {
+      console.error('[PROXY] Socket idle 300s, destroying')
+      proxyReq.destroy()
+    })
+  })
+
   proxyReq.setTimeout(120000, () => {
-    console.error('[PROXY TIMEOUT] 120s exceeded')
+    console.error('[PROXY TIMEOUT] 120s exceeded waiting for response')
     proxyReq.destroy()
     if (!res.headersSent) {
       res.status(504).json({ error: 'Timeout' })
