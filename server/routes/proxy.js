@@ -186,6 +186,87 @@ router.get('/manifest', (req, res) => {
   })
 })
 
+// HLS playlist/segment proxy
+router.get('/hlsproxy', (req, res) => {
+  const encodedUrl = req.query.url
+  if (!encodedUrl) return res.status(400).send('Missing url parameter')
+
+  let targetUrl
+  try {
+    targetUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8')
+  } catch {
+    return res.status(400).send('Invalid URL')
+  }
+
+  const parsedUrl = new URL(targetUrl)
+  const isPlaylist = targetUrl.includes('/manifest/') || targetUrl.endsWith('.m3u8')
+
+  const options = {
+    hostname: parsedUrl.hostname,
+    port: 443,
+    path: parsedUrl.pathname + parsedUrl.search,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+      'Accept': '*/*',
+      'Connection': 'keep-alive',
+    },
+  }
+
+  const cookie = getYouTubeCookie()
+  if (cookie) options.headers['Cookie'] = cookie
+
+  const proxyReq = https.request(options, (proxyRes) => {
+    if (proxyRes.statusCode === 302 || proxyRes.statusCode === 301) {
+      const redirect = proxyRes.headers.location
+      if (redirect) {
+        const enc = Buffer.from(redirect).toString('base64url')
+        return res.redirect(`/hlsproxy?url=${enc}`)
+      }
+    }
+
+    if (isPlaylist) {
+      let data = ''
+      proxyRes.on('data', chunk => { data += chunk })
+      proxyRes.on('end', () => {
+        const rewritten = data.replace(/https?:\/\/[^\s"]+/g, (url) => {
+          const enc = Buffer.from(url).toString('base64url')
+          return `/hlsproxy?url=${enc}`
+        })
+        res.set({
+          'Content-Type': 'application/vnd.apple.mpegurl',
+          'Cache-Control': 'no-cache',
+          'Access-Control-Allow-Origin': '*',
+        })
+        res.send(rewritten)
+      })
+    } else {
+      res.set({
+        'Content-Type': proxyRes.headers['content-type'] || 'video/mp2t',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=300',
+      })
+      if (proxyRes.headers['content-length']) {
+        res.set('Content-Length', proxyRes.headers['content-length'])
+      }
+      res.writeHead(proxyRes.statusCode)
+      proxyRes.pipe(res)
+    }
+  })
+
+  proxyReq.on('error', (e) => {
+    console.error('[HLS-PROXY]', e.message)
+    if (!res.headersSent) res.status(502).send('HLS proxy error')
+  })
+
+  proxyReq.setTimeout(30000, () => {
+    proxyReq.destroy()
+    if (!res.headersSent) res.status(504).send('HLS proxy timeout')
+  })
+
+  proxyReq.end()
+})
+
 // CORS preflight for video playback
 router.options('/videoplayback', (req, res) => {
   res.set({

@@ -322,18 +322,13 @@ export default {
           this.legacyFormats = result.formatStreams.map(mapInvidiousLegacyFormat)
         }
 
-        // DASH manifest - use server-provided dashUrl if available
+        // Prefer HLS (segment-based, more reliable through proxies)
+        const hlsManifestUrl = `/api/manifest/hls/${this.videoId}`
         if (result.dashUrl) {
-          // Check if it's a relative path (from local-api-server)
-          if (result.dashUrl.startsWith('/')) {
-            this.manifestSrc = `${window.location.origin}${result.dashUrl}`
-          } else {
-            this.manifestSrc = result.dashUrl
-          }
-          this.manifestMimeType = MANIFEST_TYPE_DASH
+          this.manifestSrc = hlsManifestUrl
+          this.manifestMimeType = MANIFEST_TYPE_HLS
           this.activeFormat = 'dash'
         } else if (result.hlsUrl) {
-          // For live streams
           this.manifestSrc = result.hlsUrl
           this.manifestMimeType = MANIFEST_TYPE_HLS
           this.activeFormat = 'dash'

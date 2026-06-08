@@ -568,6 +568,41 @@ router.get('/manifest/dash/id/:id', async (req, res) => {
   }
 })
 
+// HLS manifest proxy — rewrites YouTube URLs to go through our proxy
+router.get('/manifest/hls/:id', async (req, res) => {
+  try {
+    const videoId = req.params.id
+    console.log(`[HLS] Generating proxied manifest for: ${videoId}`)
+
+    const innertubeIos = getInnertubeAndroid()
+    const info = await innertubeIos.getBasicInfo(videoId)
+    const hlsUrl = info.streaming_data?.hls_manifest_url
+
+    if (!hlsUrl) {
+      console.log(`[HLS] No HLS manifest for ${videoId}, falling back to DASH`)
+      return res.redirect(`/api/manifest/dash/id/${videoId}`)
+    }
+
+    const resp = await fetch(hlsUrl)
+    if (!resp.ok) throw new Error(`HLS fetch failed: ${resp.status}`)
+    let manifest = await resp.text()
+
+    // Rewrite all YouTube URLs to go through our proxy
+    manifest = manifest.replace(/https?:\/\/[^\s"]+/g, (url) => {
+      const encoded = Buffer.from(url).toString('base64url')
+      return `/hlsproxy?url=${encoded}`
+    })
+
+    res.set('Content-Type', 'application/vnd.apple.mpegurl')
+    res.set('Cache-Control', 'no-cache')
+    res.set('Access-Control-Allow-Origin', '*')
+    res.send(manifest)
+  } catch (error) {
+    console.error('[HLS]', error.message)
+    res.status(500).send('Error generating HLS manifest')
+  }
+})
+
 // Captions/Transcript - proxy YouTube timedtext
 router.get('/captions/:videoId', async (req, res) => {
   try {

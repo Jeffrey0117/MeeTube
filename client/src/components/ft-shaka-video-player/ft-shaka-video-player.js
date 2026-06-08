@@ -915,7 +915,6 @@ export default defineComponent({
           'ft_autoplay_toggle',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
           'playback_rate',
-          'captions',
           'ft_bilingual',
           'ft_audio_tracks',
           'ft_equalizer',
@@ -933,7 +932,7 @@ export default defineComponent({
       } else {
         uiConfig.controlPanelElements.push(
           'ft_screenshot',
-          'ft_bilingual',  // Unified subtitle button (replaces captions)
+          'ft_bilingual',
           'ft_equalizer',
           'loop',
           'ft_autoplay_toggle',
@@ -945,7 +944,6 @@ export default defineComponent({
         )
 
         uiConfig.overflowMenuButtons.push(
-          'captions',
           'ft_audio_tracks',
           'playback_rate',
           props.format === 'legacy' ? 'ft_legacy_quality' : 'quality',
