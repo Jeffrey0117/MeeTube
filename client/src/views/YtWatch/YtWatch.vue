@@ -18,8 +18,18 @@
 
           <!-- Video Player -->
           <div v-else class="yt-video-player">
+            <!-- YouTube Embed Fallback -->
+            <iframe
+              v-if="useYouTubeEmbed"
+              :src="`https://www.youtube.com/embed/${videoId}?autoplay=1&start=${startTimeSeconds}&rel=0&modestbranding=1`"
+              class="yt-player-fill"
+              frameborder="0"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowfullscreen
+            />
+            <!-- Custom DASH Player -->
             <ft-shaka-video-player
-              v-if="!errorMessage && manifestSrc"
+              v-else-if="!errorMessage && manifestSrc"
               ref="player"
               :manifest-src="manifestSrc"
               :manifest-mime-type="manifestMimeType"
@@ -203,6 +213,7 @@ export default {
       captions: [],
       videoStoryboardSrc: '',
       activeFormat: 'dash',
+      useYouTubeEmbed: false,
       videoChapters: [],
       videoCurrentChapterIndex: 0,
       startTimeSeconds: 0,
@@ -258,6 +269,8 @@ export default {
       this.isLoading = true
       this.errorMessage = ''
       this.manifestSrc = null
+      this.useYouTubeEmbed = false
+      this._errorCount = 0
       this.relatedVideos = []
       this.lastSavedProgress = 0
 
@@ -381,36 +394,28 @@ export default {
     handlePlayerError(error) {
       console.error('Player error:', error)
 
-      const errorCode = error?.code || 0
+      if (!this._errorCount) this._errorCount = 0
+      this._errorCount++
 
-      // Network errors (1xxx) - often recoverable
-      if (errorCode >= 1000 && errorCode < 2000) {
-        console.log('[YtWatch] Network error, will retry...')
+      // After 2 errors, give up on custom player and use YouTube embed
+      if (this._errorCount >= 2 && this.videoId) {
+        console.log('[YtWatch] Multiple errors, switching to YouTube embed')
+        this.useYouTubeEmbed = true
+        this.errorMessage = ''
         return
       }
 
-      // HLS failed — fallback to DASH
-      if (this._dashFallbackUrl && this.manifestMimeType === MANIFEST_TYPE_HLS) {
-        console.log('[YtWatch] HLS failed, falling back to DASH...')
-        this.manifestSrc = null
-        this.$nextTick(() => {
-          this.manifestSrc = this._dashFallbackUrl
-          this.manifestMimeType = MANIFEST_TYPE_DASH
-          this._dashFallbackUrl = null
-        })
+      // First error: try legacy format
+      if (this.activeFormat === 'dash' && this.legacyFormats.length > 0) {
+        console.log('[YtWatch] Switching to legacy format...')
+        this.activeFormat = 'legacy'
         return
       }
 
-      // Media errors (3xxx) - try fallback to legacy
-      if (errorCode >= 3000 && errorCode < 4000) {
-        if (this.activeFormat === 'dash' && this.legacyFormats.length > 0) {
-          console.log('[YtWatch] Switching to legacy format...')
-          this.activeFormat = 'legacy'
-          return
-        }
-      }
-
-      this.errorMessage = '播放器發生錯誤，請重試'
+      // All else failed — YouTube embed
+      console.log('[YtWatch] All formats failed, using YouTube embed')
+      this.useYouTubeEmbed = true
+      this.errorMessage = ''
     },
 
     handleVideoLoaded() {
