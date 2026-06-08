@@ -323,11 +323,13 @@ export default {
         }
 
         // Prefer HLS (segment-based, more reliable through proxies)
-        const hlsManifestUrl = `/api/manifest/hls/${this.videoId}`
         if (result.dashUrl) {
-          this.manifestSrc = hlsManifestUrl
+          this.manifestSrc = `${window.location.origin}/api/manifest/hls/${this.videoId}`
           this.manifestMimeType = MANIFEST_TYPE_HLS
           this.activeFormat = 'dash'
+          this._dashFallbackUrl = result.dashUrl.startsWith('/')
+            ? `${window.location.origin}${result.dashUrl}`
+            : result.dashUrl
         } else if (result.hlsUrl) {
           this.manifestSrc = result.hlsUrl
           this.manifestMimeType = MANIFEST_TYPE_HLS
@@ -380,13 +382,23 @@ export default {
     handlePlayerError(error) {
       console.error('Player error:', error)
 
-      // Check if it's a recoverable error
       const errorCode = error?.code || 0
 
       // Network errors (1xxx) - often recoverable
       if (errorCode >= 1000 && errorCode < 2000) {
         console.log('[YtWatch] Network error, will retry...')
-        // Don't show error, player should recover
+        return
+      }
+
+      // HLS failed — fallback to DASH
+      if (this._dashFallbackUrl && this.manifestMimeType === MANIFEST_TYPE_HLS) {
+        console.log('[YtWatch] HLS failed, falling back to DASH...')
+        this.manifestSrc = null
+        this.$nextTick(() => {
+          this.manifestSrc = this._dashFallbackUrl
+          this.manifestMimeType = MANIFEST_TYPE_DASH
+          this._dashFallbackUrl = null
+        })
         return
       }
 
