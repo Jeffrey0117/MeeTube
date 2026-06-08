@@ -146,8 +146,17 @@ export function toGgphtProxyUrl(url) {
 // Convert video stream URL to proxy URL
 export function toProxyUrl(originalUrl) {
   if (!originalUrl) return ''
-  const encoded = Buffer.from(originalUrl).toString('base64url')
-  return `/videoplayback?url=${encoded}`
+  try {
+    const url = new URL(originalUrl)
+    if (!url.searchParams.has('ratebypass')) {
+      url.searchParams.set('ratebypass', 'yes')
+    }
+    const encoded = Buffer.from(url.toString()).toString('base64url')
+    return `/videoplayback?url=${encoded}`
+  } catch {
+    const encoded = Buffer.from(originalUrl).toString('base64url')
+    return `/videoplayback?url=${encoded}`
+  }
 }
 
 // Create standard author thumbnails array

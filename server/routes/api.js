@@ -114,10 +114,13 @@ async function prefetchCaption(videoId, langCode) {
     const needsConv = segments.length > 3 &&
       segments[Math.floor(segments.length / 2)].offset < 1000
 
+    const OFFSET = -400
     let vtt = 'WEBVTT\n\n'
     for (const seg of segments) {
-      const s = needsConv ? Math.round(seg.offset * 1000) : seg.offset
-      const e = s + (needsConv ? Math.round(seg.duration * 1000) : seg.duration)
+      const rawS = needsConv ? Math.round(seg.offset * 1000) : seg.offset
+      const rawE = rawS + (needsConv ? Math.round(seg.duration * 1000) : seg.duration)
+      const s = Math.max(0, rawS + OFFSET)
+      const e = Math.max(s + 100, rawE + OFFSET)
       vtt += `${formatVttTime(s)} --> ${formatVttTime(e)}\n`
       vtt += `${decodeHtmlEntities(seg.text)}\n\n`
     }
@@ -600,11 +603,16 @@ router.get('/captions/:videoId', async (req, res) => {
       const needsMsConversion = segments.length > 3 &&
         segments[Math.floor(segments.length / 2)].offset < 1000
 
+      // Shift captions slightly earlier — youtube-transcript timing lags real audio
+      const TIMING_OFFSET_MS = -400
+
       let vtt = 'WEBVTT\n\n'
       for (let i = 0; i < segments.length; i++) {
         const seg = segments[i]
-        const startMs = needsMsConversion ? Math.round(seg.offset * 1000) : seg.offset
-        const endMs = startMs + (needsMsConversion ? Math.round(seg.duration * 1000) : seg.duration)
+        const rawStart = needsMsConversion ? Math.round(seg.offset * 1000) : seg.offset
+        const rawEnd = rawStart + (needsMsConversion ? Math.round(seg.duration * 1000) : seg.duration)
+        const startMs = Math.max(0, rawStart + TIMING_OFFSET_MS)
+        const endMs = Math.max(startMs + 100, rawEnd + TIMING_OFFSET_MS)
         vtt += `${formatVttTime(startMs)} --> ${formatVttTime(endMs)}\n`
         vtt += `${decodeHtmlEntities(seg.text)}\n\n`
       }

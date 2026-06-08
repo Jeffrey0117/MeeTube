@@ -2241,34 +2241,41 @@ export default defineComponent({
     }
 
     function registerBilingualButton() {
-      // Handle cycle subtitle mode: off → english → bilingual → off
-      events.addEventListener('cycleSubtitleMode', async () => {
-        // Prevent rapid clicking - ignore if already loading
-        if (subtitleLoading.value) {
-          console.log('[SUBTITLE] Ignoring click - already loading')
-          return
-        }
+      async function applySubtitleMode(targetMode) {
+        if (subtitleLoading.value) return
+        if (targetMode === subtitleMode.value) return
 
-        console.log('[SUBTITLE] Cycle mode event received, current:', subtitleMode.value)
-
-        // Set loading state
         subtitleLoading.value = true
-        events.dispatchEvent(new CustomEvent('subtitleLoadingChanged', {
-          detail: { loading: true }
-        }))
+        events.dispatchEvent(new CustomEvent('subtitleLoadingChanged', { detail: { loading: true } }))
+
+        let loadingAbort = null
+        if (targetMode === 'bilingual') {
+          loadingAbort = new AbortController()
+          showToast('載入字幕中...', 10000, null, loadingAbort.signal)
+        }
 
         try {
-          await cycleSubtitleMode()
-          events.dispatchEvent(new CustomEvent('subtitleModeChanged', {
-            detail: { mode: subtitleMode.value }
-          }))
+          if (targetMode === 'off') {
+            disableSubtitles(false)
+          } else {
+            await enableSubtitles(targetMode, false)
+          }
+          events.dispatchEvent(new CustomEvent('subtitleModeChanged', { detail: { mode: subtitleMode.value } }))
         } finally {
-          // Clear loading state
+          if (loadingAbort) loadingAbort.abort()
           subtitleLoading.value = false
-          events.dispatchEvent(new CustomEvent('subtitleLoadingChanged', {
-            detail: { loading: false }
-          }))
+          events.dispatchEvent(new CustomEvent('subtitleLoadingChanged', { detail: { loading: false } }))
         }
+      }
+
+      events.addEventListener('setSubtitleMode', (e) => {
+        applySubtitleMode(e.detail.mode)
+      })
+
+      events.addEventListener('cycleSubtitleMode', () => {
+        const modes = ['off', 'english', 'bilingual']
+        const nextMode = modes[(modes.indexOf(subtitleMode.value) + 1) % modes.length]
+        applySubtitleMode(nextMode)
       })
 
       // Button factory
