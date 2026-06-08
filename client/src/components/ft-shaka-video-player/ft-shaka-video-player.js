@@ -679,32 +679,41 @@ export default defineComponent({
         // YouTube uses these values and they seem to work well in FreeTube too,
         // so we might as well use them
         streaming: {
-          bufferingGoal: 120,
-          rebufferingGoal: 2,
-          bufferBehind: 60,
+          bufferingGoal: 30,
+          rebufferingGoal: 5,
+          bufferBehind: 30,
           retryParameters: {
-            maxAttempts: 5,
-            baseDelay: 1000,
-            backoffFactor: 2,
-            timeout: 60000,
-            stallTimeout: 20000,
-            connectionTimeout: 15000,
+            maxAttempts: 10,
+            baseDelay: 500,
+            backoffFactor: 1.5,
+            timeout: 120000,
+            stallTimeout: 30000,
+            connectionTimeout: 20000,
+          },
+          failureCallback: (error) => {
+            if (error.severity !== shaka.util.Error.Severity.RECOVERABLE) {
+              error.severity = shaka.util.Error.Severity.RECOVERABLE
+            }
+            console.warn('[ShakaStream] Forcing retry for error:', error.code)
           },
         },
         manifest: {
           disableVideo: format === 'audio',
-
-          // makes captions work for live streams and doesn't seem to have any negative affect on VOD videos
           segmentRelativeVttTiming: true,
+          retryParameters: {
+            maxAttempts: 5,
+            baseDelay: 1000,
+            backoffFactor: 2,
+            timeout: 30000,
+          },
           dash: {
             manifestPreprocessorTXml: manifestPreprocessorTXml
           },
         },
         abr: {
-          enabled: useAutoQuality,
-
-          // This only affects the "auto" quality, users can still manually select whatever quality they want.
-          restrictToElementSize: true
+          enabled: true,
+          restrictToElementSize: true,
+          defaultBandwidthEstimate: 1500000,
         },
         autoShowText: shaka.config.AutoShowText.NEVER,
 
@@ -2857,12 +2866,16 @@ export default defineComponent({
 
       logShakaError(error, context, props.videoId, details)
 
-      // text related errors aren't serious (captions and seek bar thumbnails), so we should just log them
-      // TODO: consider only emitting when the severity is crititcal?
+      if (error.severity === shaka.util.Error.Severity.RECOVERABLE) {
+        console.warn('[ShakaPlayer] Recoverable error, letting player retry:', error.code)
+        return
+      }
+
       if (
         !ignoreErrors &&
         error.category !== shaka.util.Error.Category.TEXT &&
-        !(error.code === shaka.util.Error.Code.BAD_HTTP_STATUS && error.data[0].startsWith('https://www.youtube.com/api/timedtext'))
+        error.category !== shaka.util.Error.Category.NETWORK &&
+        !(error.code === shaka.util.Error.Code.BAD_HTTP_STATUS && error.data[0]?.startsWith?.('https://www.youtube.com/api/timedtext'))
       ) {
         // don't react to multiple consecutive errors, otherwise we don't give the format fallback from the previous error a chance to work
         ignoreErrors = true
