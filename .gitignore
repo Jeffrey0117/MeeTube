@@ -10,6 +10,7 @@ dist/
 .env
 .env.local
 .env.*.local
+.pm2-ecosystem.json
 
 # Database
 data/
